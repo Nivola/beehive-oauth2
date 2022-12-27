@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+            <div class="col-md-8 col-md-offset-2">
+                <form role="form" action="{{ scope_uri }}" method="POST" name="registrationForm" id="registrationForm" data-toggle="validator">
+                    <div class="jumbotron">
+                      <h2>An application would like to connect to your account</h2>
+                      <p>
+                        The app <b>{{ client }}</b> would like the ability to access:
+                        <!--<div class="checkbox">
+                          <label>
+                            <input type="checkbox" name="scopes" value="" checked disabled>
+                            your basic information
+                          </label>
+                        </div>-->
+                        {% for item in scope %}
+                        <p>{{ item }}</p>
+                        {% endfor %}
+                        </ul>
+                      </p>
+                      <h4>Allow {{ client }} access?</h4>
+                      <p>
+                          <input type="hidden" name="scope" value="{{ ' '.join(scope) }}">
+                          <button type="submit" class="btn btn-danger">Deny</button>
+                          <button type="submit" class="btn btn-success">Allow</button>
+                      </p>
+                    </div>
+                </form>
+            </div>                 
+{% endblock %}

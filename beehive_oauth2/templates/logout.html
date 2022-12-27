@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}    
+<div class="panel-heading">
+    <h3 class="panel-title">{{ _('Current user has logged out') }}</h3>
+</div>
+<div class="panel-body">
+    <p>{{ _('User Id') }} : {{ user.id }}</p>
+    <p>{{ _('User name') }} : {{ user.name }}</p>
+</div>
+{% endblock %}

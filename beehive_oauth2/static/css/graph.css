@@ -1,0 +1,241 @@
+.graph {
+    /* for IE10+ touch devices */
+    touch-action: none;
+    position: relative;
+    width: 100%;
+    background-color: #ffffff;
+    overflow: hidden;
+    /*margin-top: 53px;
+    margin-bottom: 25px;*/
+    min-height: 450px;
+    height: 450px;
+    border: 0px solid rgb(231, 231, 231);
+    -moz-border-radius: 0px;
+    border-radius: 0px;
+    font-family: Sans-serif;
+}
+
+.graph .container {
+    /* for IE10+ touch devices */
+    touch-action: none;
+    position: relative;
+    width: 10000px;
+    height: 10000px;
+    padding: 0px;
+    margin: 0px;
+}
+
+.graph .node {
+    position: absolute;
+    float: left;
+    vertical-align: middle;
+    cursor: move;
+    z-index: 4;
+    width: 120px;      
+    padding: 5px;
+    color: white;
+    -moz-border-radius: 4px;
+    border-radius: 4px;
+    background-color: #7EA6E0;
+    text-align: center;
+    font-size: 14px;
+    font-weight: bold;    
+}
+
+.graph .ep{
+    position: absolute;
+    z-index: 1000;
+    top: 5px;
+    right: 5px;
+    width: 1em;
+    height: 1em;
+    background-color: orange;
+    cursor: pointer;
+    box-shadow: 0 0 2px black;
+    -webkit-transition: -webkit-box-shadow 0.25s ease-in;
+    -moz-transition: -moz-box-shadow 0.25s ease-in;
+    transition: box-shadow 0.25s ease-in;  
+}
+
+.graph .node:hover {
+    background-color: #5c96bc;
+    color: white;
+}    
+
+.graph .module {
+    padding: 5px;
+    border: 0px solid #2e6f9a;
+    box-shadow: 2px 2px 19px #e0e0e0;
+    -o-box-shadow: 2px 2px 19px #e0e0e0;
+    -webkit-box-shadow: 2px 2px 19px #e0e0e0;
+    -moz-box-shadow: 2px 2px 19px #e0e0e0;
+    -moz-border-radius: 8px;
+    border-radius: 8px;
+    /*opacity: 0.8;
+    filter: alpha(opacity=80);*/
+    color: #000000;
+    background-color: #F5F5F5;
+    font-size: 14px;
+    -webkit-transition: background-color 0.25s ease-in;
+    -moz-transition: background-color 0.25s ease-in;
+    transition: background-color 0.25s ease-in;
+    width: 190px;      
+    min-height: 80px;   
+}
+
+.graph .module:hover {
+    background-color: #5c96bc;
+    color: white;
+}    
+
+.graph .module .title {
+    text-align: center;
+    font-size: 18px;
+    font-weight: bold;
+    width: 100px;
+    transform: rotate(270deg) translate(-30px, -40px);
+    -webkit-transform: rotate(270deg) translate(-45px, -35px);
+    -moz-transform: rotate(270deg) translate(-30px, -40px);
+    -o-transform: rotate(270deg) translate(-30px, -40px);
+    -ms-transform: rotate(270deg) translate(-30px, -40px);
+}
+
+.graph .module .layer {
+    font-size: 16px;
+    text-align: center;
+    font-weight: normal;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    margin-bottom: 2px; 
+    width: 150px;
+    transform: rotate(0deg) translate(40px, -10px);
+    -webkit-transform: rotate(0deg) translate(30px, -10px);
+    -moz-transform: rotate(0deg) translate(30px, -10px);
+    -o-transform: rotate(0deg) translate(30px, -10px);
+    -ms-transform: rotate(0deg) translate(30px, -10px);
+}
+
+.graph .module .blue {  
+    background: #7EA6E0;
+}
+.graph .module .green {
+    background: #D5E8D4;
+}
+.graph .module .yellow {
+    background: #FFD966;
+}
+
+.graph .database {
+    width: 80px;
+    font-size: 16px;
+    text-align: center;
+    font-weight: normal;
+    background-color: #F5F5F5;
+    color: #cccccc;
+}
+
+.graph .database .title{
+    width: 80px;
+    text-align: center;
+    color: #000000;    
+}    
+
+.graph .redis {
+    width: 200px;
+    font-size: 16px;
+    text-align: center;
+    font-weight: normal;
+    -moz-border-radius: 8px;
+    border-radius: 8px;
+    /*filter: alpha(opacity=80);*/
+    background-color: #F5F5F5;
+    color: #000000;
+}
+
+.graph .redis .title {
+    text-align: center;
+    font-size: 18px;
+    font-weight: bold;
+    width: 100px;
+    transform: rotate(270deg) translate(-30px, -40px);
+    -webkit-transform: rotate(270deg) translate(-45px, -35px);
+    -moz-transform: rotate(270deg) translate(-30px, -40px);
+    -o-transform: rotate(270deg) translate(-30px, -40px);
+    -ms-transform: rotate(270deg) translate(-30px, -40px);
+}
+
+.graph .redis .db {
+    position: relative;
+    float: left;    
+    font-size: 16px;
+    text-align: center;
+    font-weight: normal;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    margin-bottom: 2px; 
+    width: 41px;
+    color: #cccccc;
+    transform: rotate(0deg) translate(40px, -10px);
+    -webkit-transform: rotate(0deg) translate(40px, -10px);
+    -moz-transform: rotate(0deg) translate(40px, -10px);
+    -o-transform: rotate(0deg) translate(40px, -10px);
+    -ms-transform: rotate(0deg) translate(40px, -10px);
+}
+
+.graph .redis .db .name {
+    width: 41px;
+    color: #333333;
+    text-align: center;
+}
+
+.graph .redis .queue .fa {
+    position: relative;
+    float: left;
+    color: #cccccc;
+    width: 50px;
+    padding-left: 70px;        
+}
+
+.graph .redis .queue .name {
+    width: 40px;
+    color: #333333;
+    text-align: center;
+}
+
+.graph .consumer {
+    width: 200px;
+    min-height: 50px;
+    text-align: center;
+    font-size: 18px;
+    font-weight: bold;
+    padding-top: 10px;
+    -moz-border-radius: 8px;
+    border-radius: 8px;
+    filter: alpha(opacity=80);
+    background-color: #F5F5F5;
+    color: #000000;
+}
+
+.graph_coords {
+    position: relative;
+    float: right;
+    font-size: 14px;
+    text-align: center;
+    font-style: italic;
+}
+
+.graph_navbar {
+    margin-bottom: 2px;
+}
+
+.graph .component {
+	background-color: #f0ad4e;
+}
+
+.graph .res_container {
+    background-color: #5cb85c;
+}
+
+.graph .popover {
+	z-index: 100;
+}

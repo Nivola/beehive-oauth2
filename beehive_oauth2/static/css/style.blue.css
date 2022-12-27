@@ -1,0 +1,38 @@
+/*!
+ * Start Bootstrap - SB Admin 2 Bootstrap Admin Theme (http://startbootstrap.com)
+ * Code licensed under the Apache License v2.0.
+ * For details, see http://www.apache.org/licenses/LICENSE-2.0.
+ */
+
+body {
+    background-color: #2c4a67;
+}
+
+.login-panel panel-heading {
+    /*background-color: #fff;*/
+}
+
+.login-panel panel-body {
+    background-color: #fff;
+}
+
+/*
+#page-wrapper {
+    padding: 0 15px;
+    min-height: 568px;
+    background-color: #2c4a67;
+}
+
+@media(min-width:768px) {
+    #page-wrapper {
+	    position: relative;
+	    margin-right: 0;
+	    margin-left: -200px;
+	    -webkit-transition: all 0.5s ease;
+	    -moz-transition: all 0.5s ease;
+	    -o-transition: all 0.5s ease;
+	    transition: all 0.5s ease;
+	    width: auto;        
+    }
+}*/
+

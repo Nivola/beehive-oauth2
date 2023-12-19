@@ -1,7 +1,8 @@
 *.py[co]
 _build/
+.settings/
 *.so
 .project
 .pydevproject
 .idea/
-.manage.*
+.scannerwork

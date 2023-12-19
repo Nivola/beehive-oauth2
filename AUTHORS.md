@@ -1,4 +1,6 @@
-beehive-aouth2 is written and maintained by: 
+beehive-aouth2 is written and maintained by:
 
-* Sergio Tonani
+* Davide Sacchetto
 * Filippo Vallero
+* Gianni Doria
+* Sergio Tonani

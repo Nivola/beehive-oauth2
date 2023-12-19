@@ -1,5 +1,32 @@
 # Changelog
 
+## Version 1.15.0
+
+* Fixed ...
+  * minor changes
+
+## Version 1.14.0
+
+* Added ...
+  * reduce session permission in order to lay only one role
+
+* Fixed ...
+  * controller refactoring
+  * model refactoring
+  * css
+
+## Version 1.13.0
+
+* Fixed ...
+  * minor fixes
+
+## Version 1.12.0
+
+* Added ...
+  * elasticsearch upgrade
+* Fixed ...
+  * minor changes
+
 ## Version 1.11.0 (oct 11, 2022)
 * Various bugfixes
 

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2022 CSI-Piemonte
+# (C) Copyright 2018-2023 CSI-Piemonte
 
 # -*- coding: utf-8 -*-
 import ujson as json
@@ -8,13 +8,19 @@ from six import ensure_text
 from oauthlib.oauth2 import RequestValidator
 from logging import getLogger
 from six import ensure_text
-from beecell.simple import  truncate
+from beecell.simple import truncate
 from datetime import datetime, timedelta
 from beecell.db import ModelError
-from beehive_oauth2.model import Oauth2DbManager, GrantType, \
-    Oauth2Client, Oauth2AuthorizationCode, Oauth2Scope
+from beehive_oauth2.model import (
+    Oauth2DbManager,
+    GrantType,
+    Oauth2Client,
+    Oauth2AuthorizationCode,
+    Oauth2Scope,
+)
 from beehive.common.data import query, operation, transaction
 from beehive_oauth2.jwtgrant import JWTClient
+from oauthlib.common import Request
 from beehive.common.model.authorization import User, AuthDbManager
 from oauthlib.oauth2.rfc6749.clients.web_application import WebApplicationClient
 from oauthlib.oauth2.rfc6749.clients.backend_application import BackendApplicationClient
@@ -25,12 +31,17 @@ from beecell.auth.base import SystemUser
 import binascii
 from zlib import compress
 from beecell.simple import jsonDumps
+from sqlalchemy.orm import Session
+
+# from typing import Dict
+
+from .oauth2controller import Oauth2Controller
 
 
 class Oauth2RequestValidator(RequestValidator):
-    def __init__(self, controller=None, *args, **kwargs):
+    def __init__(self, controller: Oauth2Controller = None, *args, **kwargs):
         RequestValidator.__init__(args, **kwargs)
-        self.logger = getLogger(self.__class__.__module__ + '.' + self.__class__.__name__)
+        self.logger = getLogger(self.__class__.__module__ + "." + self.__class__.__name__)
         self.controller = controller
         self.dbmanager = Oauth2DbManager()
         self.dbauth = AuthDbManager()
@@ -64,7 +75,7 @@ class Oauth2RequestValidator(RequestValidator):
         return True
 
     @query
-    def authenticate_client(self, request, *args, **kwargs):
+    def authenticate_client(self, request: Request, *args, **kwargs):
         """Authenticate client through means outside the OAuth 2 spec.
 
         Means of authentication is negotiated beforehand and may for example
@@ -86,24 +97,24 @@ class Oauth2RequestValidator(RequestValidator):
 
         .. _`HTTP Basic Authentication Scheme`: http://tools.ietf.org/html/rfc1945#section-11.1
         """
-        session = operation.session
+        session: Session = operation.session
 
         try:
             # get client id
-            client_id = request.body['client_id']
+            client_id = request.body["client_id"]
             query = session.query(Oauth2Client).filter_by(uuid=client_id)
-            orm_client = query.first()
+            orm_client: Oauth2Client = query.first()
             request.ormclient = orm_client
 
             if orm_client is None:
                 return False
 
             # get client associated user
-            dbuser = session.query(User).filter_by(id=orm_client.user_id).first()
+            dbuser: User = session.query(User).filter_by(id=orm_client.user_id).first()
             # get user attributes
-            dbuser_attribs = {a.name: (a.value, a.desc) for a in dbuser.attrib}
+            dbuser_attribs: dict = {a.name: (a.value, a.desc) for a in dbuser.attrib}
             # get login user
-            email = dbuser.email
+            email: str = dbuser.email
             if email is None:
                 email = dbuser.name
             user = SystemUser(dbuser.name, email, None, dbuser.active, login_ip=request.login_ip)
@@ -119,12 +130,12 @@ class Oauth2RequestValidator(RequestValidator):
             request.ormuser = user
 
             # get grant type
-            grant_type = request.body['grant_type']
+            grant_type = request.body["grant_type"]
 
             if grant_type == GrantType.AUTHORIZATION_CODE:
-                client_secret = request.body['client_secret']
+                client_secret = request.body["client_secret"]
                 if orm_client.client_secret != client_secret:
-                    raise ModelError('Client %s authentication failed' % client_id)
+                    raise ModelError("Client %s authentication failed" % client_id)
 
                 client = WebApplicationClient(client_id=client_id)
 
@@ -135,18 +146,18 @@ class Oauth2RequestValidator(RequestValidator):
                 client = LegacyApplicationClient(client_id=client_id)
 
             elif grant_type == GrantType.CLIENT_CRDENTIAL:
-                client_secret = request.body['client_secret']
+                client_secret = request.body["client_secret"]
                 if orm_client.client_secret != client_secret:
-                    raise ModelError('Client %s authentication failed' % client_id)
+                    raise ModelError("Client %s authentication failed" % client_id)
                 client = BackendApplicationClient(client_id=client_id)
 
             elif grant_type == GrantType.JWT_BEARER:
                 if orm_client is None:
-                    raise ModelError('Client %s does not exists' % client_id)
+                    raise ModelError("Client %s does not exists" % client_id)
                 client = JWTClient(client_id=client_id)
 
             request.client = client
-            self.logger.info('Authenticate client %s' % client_id)
+            self.logger.info("Authenticate client %s" % client_id)
             return True
         except ModelError as ex:
             self.logger.error(ex, exc_info=1)
@@ -171,7 +182,7 @@ class Oauth2RequestValidator(RequestValidator):
         Method is used by:
             - Authorization Code Grant
         """
-        raise NotImplementedError('Subclasses must implement authenticate_client_id.')
+        raise NotImplementedError("Subclasses must implement authenticate_client_id.")
 
     @query
     def confirm_redirect_uri(self, client_id, code, redirect_uri, client, *args, **kwargs):
@@ -194,19 +205,21 @@ class Oauth2RequestValidator(RequestValidator):
         Method is used by:
             - Authorization Code Grant (during token request)
         """
-        session = operation.session
+        session: Session = operation.session
         try:
-            client = session.query(Oauth2Client).filter_by(uuid=client_id).first()
+            oauth_client = session.query(Oauth2Client).filter_by(uuid=client_id).first()
 
-            auth_code = session.query(Oauth2AuthorizationCode) \
-                   .filter_by(client=client) \
-                   .filter_by(redirect_uri=redirect_uri) \
-                   .filter(Oauth2AuthorizationCode.code.like('%'+code+'%')) \
-                   .first()
+            auth_code: Oauth2AuthorizationCode = (
+                session.query(Oauth2AuthorizationCode)
+                .filter_by(client=oauth_client)
+                .filter_by(redirect_uri=redirect_uri)
+                .filter(Oauth2AuthorizationCode.code.like("%" + code + "%"))
+                .first()
+            )
             if auth_code is None:
-                raise ModelError('Client %s redirect uri does not match' % client_id)
+                raise ModelError("Client %s redirect uri does not match" % client_id)
 
-            self.logger.info('Client %s redirect uri matches' % client_id)
+            self.logger.info("Client %s redirect uri matches" % client_id)
             return True
         except ModelError as ex:
             self.logger.error(ex)
@@ -223,9 +236,9 @@ class Oauth2RequestValidator(RequestValidator):
             - Authorization Code Grant
             - Implicit Grant
         """
-        raise NotImplementedError('Subclasses must implement get_default_redirect_uri.')
+        raise NotImplementedError("Subclasses must implement get_default_redirect_uri.")
 
-    def get_default_scopes(self, client_id, request, *args, **kwargs):
+    def get_default_scopes(self, client_id, request: Request, *args, **kwargs):
         """Get the default scopes for the client.
 
         :param client_id: Unicode client identifier
@@ -239,13 +252,14 @@ class Oauth2RequestValidator(RequestValidator):
             - Client Credentials grant
             - Jwt bearer grant
         """
+
         try:
-            client = request.ormclient
+            client: Oauth2Client = request.ormclient
             scopes = []
             for scope in client.scope:
                 scopes.append(scope.name)
 
-            self.logger.info('Get client %s default scopes: %s' % (client_id, scopes))
+            self.logger.info("Get client %s default scopes: %s" % (client_id, scopes))
             return scopes
         except Exception as ex:
             self.logger.error(ex.message, exc_info=1)
@@ -260,7 +274,7 @@ class Oauth2RequestValidator(RequestValidator):
         Method is used by:
             - Refresh token grant
         """
-        raise NotImplementedError('Subclasses must implement get_original_scopes.')
+        raise NotImplementedError("Subclasses must implement get_original_scopes.")
 
     def is_within_original_scope(self, request_scopes, refresh_token, request, *args, **kwargs):
         """Check if requested scopes are within a scope of the refresh token.
@@ -284,7 +298,7 @@ class Oauth2RequestValidator(RequestValidator):
         return False
 
     @query
-    def invalidate_authorization_code(self, client_id, code, request, *args, **kwargs):
+    def invalidate_authorization_code(self, client_id: str, code: str, request: Request, *args, **kwargs):
         """Invalidate an authorization code after use.
 
         :param client_id: Unicode client identifier
@@ -294,13 +308,16 @@ class Oauth2RequestValidator(RequestValidator):
         Method is used by:
             - Authorization Code Grant
         """
-        session = operation.session
-        try:
-            auth_code = session.query(Oauth2AuthorizationCode).filter(Oauth2AuthorizationCode.code.like('%'+code+'%'))
-            expires_at = datetime.today() - timedelta(minutes=1)
-            auth_code.update({'expires_at':expires_at}, synchronize_session='fetch')
 
-            self.logger.info('Invalidate %s authorization code %s' % (client_id, code))
+        session: Session = operation.session
+        try:
+            auth_code = session.query(Oauth2AuthorizationCode).filter(
+                Oauth2AuthorizationCode.code.like("%" + code + "%")
+            )
+            expires_at = datetime.today() - timedelta(minutes=1)
+            auth_code.update({"expires_at": expires_at}, synchronize_session="fetch")
+
+            self.logger.info("Invalidate %s authorization code %s" % (client_id, code))
             return True
         except ModelError as ex:
             self.logger.error(ex)
@@ -316,7 +333,7 @@ class Oauth2RequestValidator(RequestValidator):
         Method is used by:
             - Revocation Endpoint
         """
-        raise NotImplementedError('Subclasses must implement revoke_token.')
+        raise NotImplementedError("Subclasses must implement revoke_token.")
 
     def rotate_refresh_token(self, request):
         """Determine whether to rotate the refresh token. Default, yes.
@@ -334,7 +351,7 @@ class Oauth2RequestValidator(RequestValidator):
         return True
 
     @transaction
-    def save_authorization_code(self, client_id, code, request, *args, **kwargs):
+    def save_authorization_code(self, client_id, code, request: Request, *args, **kwargs):
         """Persist the authorization_code.
 
         The code should at minimum be stored with:
@@ -360,6 +377,7 @@ class Oauth2RequestValidator(RequestValidator):
         Method is used by:
             - Authorization Code Grant
         """
+
         session = operation.session
 
         # get client object
@@ -378,10 +396,10 @@ class Oauth2RequestValidator(RequestValidator):
             item = session.query(Oauth2Scope).filter_by(name=scope).first()
             data.scope.append(item)
 
-        self.logger.info('Add authorization code: %s' % data)
+        self.logger.info("Add authorization code: %s" % data)
 
     @transaction
-    def save_bearer_token(self, token, request, *args, **kwargs):
+    def save_bearer_token(self, token, request: Request, *args, **kwargs):
         """Persist the Bearer token.
 
         The Bearer token should at minimum be associated with:
@@ -424,7 +442,7 @@ class Oauth2RequestValidator(RequestValidator):
             client = session.query(Oauth2Client).filter_by(uuid=request.client_id).first()
 
             # Authorization Code Grant - set user
-            if request.grant_type == 'authorization_code':
+            if request.grant_type == "authorization_code":
                 codes, total = self.dbmanager.get_authorization_codes(code=request.code)
                 code = codes[0]
                 user_id = code.user_id
@@ -453,14 +471,14 @@ class Oauth2RequestValidator(RequestValidator):
             # Jwt Grant
             if request.ormuser is not None:
                 user = request.ormuser.get_dict()
-                user_id = user.get('id')
-                user_name = user.get('name')
-                token['user'] = user_id
+                user_id = user.get("id")
+                user_name = user.get("name")
+                token["user"] = user_id
                 token_user = user
 
             # Client Credentials grant
             else:
-                token['user'] = None
+                token["user"] = None
                 token_user = None
                 user_name = None
                 user_id = None
@@ -475,25 +493,25 @@ class Oauth2RequestValidator(RequestValidator):
             login_ip = request.login_ip
 
             # create identity
-            uid = token['access_token']
+            uid = token["access_token"]
             identity = {
-                'uid': uid,
-                'type': 'oauth2',
-                'oauth2_type': request.body['grant_type'],
-                'user': token_user,
-                'timestamp': timestamp,
-                'ip': login_ip,
-                'scope': request.scope
+                "uid": uid,
+                "type": "oauth2",
+                "oauth2_type": request.body["grant_type"],
+                "user": token_user,
+                "timestamp": timestamp,
+                "ip": login_ip,
+                "scope": request.scope,
             }
-            self.logger.debug('Create identity: %s' % (truncate(identity)))
+            self.logger.debug("Create identity: %s" % (truncate(identity)))
 
             # set user in thread local variable
             operation.user = (user_id, login_ip, uid)
 
             # save identity in redis
-            self.controller.set_identity(uid, identity, expire=True, expire_time=token['expires_in'])
+            self.controller.set_identity(uid, identity, expire=True, expire_time=token["expires_in"])
 
-            self.logger.info('Add bearer token: %s' % token)
+            self.logger.info("Add bearer token: %s" % token)
             return client.redirect_uri
         except ModelError as ex:
             self.logger.error(ex)
@@ -548,10 +566,10 @@ class Oauth2RequestValidator(RequestValidator):
             - Resource Owner Password Credentials Grant
             - Client Credentials Grant
         """
-        raise NotImplementedError('Subclasses must implement validate_bearer_token.')
+        raise NotImplementedError("Subclasses must implement validate_bearer_token.")
 
     @query
-    def validate_client_id(self, client_id, request, *args, **kwargs):
+    def validate_client_id(self, client_id, request: Request, *args, **kwargs):
         """Ensure client_id belong to a valid and active client.
 
         Note, while not strictly necessary it can often be very convenient
@@ -566,23 +584,24 @@ class Oauth2RequestValidator(RequestValidator):
             - Authorization Code Grant
             - Implicit Grant
         """
+
         session = operation.session
         try:
-            client = session.query(Oauth2Client).filter_by(uuid=client_id).filter_by(active=True).first()
+            client: Oauth2Client = session.query(Oauth2Client).filter_by(uuid=client_id).filter_by(active=True).first()
 
             if client is None:
-                raise ModelError('Client %s is not valid' % client_id)
+                raise ModelError("Client %s is not valid" % client_id)
 
             request.ormclient = client
 
-            self.logger.info('Validate client %s' % client_id)
+            self.logger.info("Validate client %s" % client_id)
             return True
         except ModelError as ex:
             self.logger.error(ex)
             return False
 
     @query
-    def validate_code(self, client_id, code, client, request, *args, **kwargs):
+    def validate_code(self, client_id, code, client, request: Request, *args, **kwargs):
         """Verify that the authorization_code is valid and assigned to the given
         client.
 
@@ -607,16 +626,20 @@ class Oauth2RequestValidator(RequestValidator):
         """
         session = operation.session
         try:
-            client = session.query(Oauth2Client).filter_by(uuid=client_id).first()
+            oauth_client = session.query(Oauth2Client).filter_by(uuid=client_id).first()
 
-            auth_code = session.query(Oauth2AuthorizationCode).filter_by(client=client)\
-                .filter(Oauth2AuthorizationCode.code.like('%'+code+'%')).first()
+            auth_code = (
+                session.query(Oauth2AuthorizationCode)
+                .filter_by(client=oauth_client)
+                .filter(Oauth2AuthorizationCode.code.like("%" + code + "%"))
+                .first()
+            )
             if auth_code.expires_at < datetime.today():
-                raise ModelError('Authorization token %s expired' % code)
+                raise ModelError("Authorization token %s expired" % code)
 
             # set request
             request.user = auth_code.user_id
-            request.state = json.loads(auth_code.code)['state']
+            request.state = json.loads(auth_code.code)["state"]
 
             scopes = []
             for item in auth_code.scope:
@@ -624,14 +647,14 @@ class Oauth2RequestValidator(RequestValidator):
 
             request.scopes = scopes
 
-            self.logger.info('Validate %s authorization code %s' % (client_id, code))
+            self.logger.info("Validate %s authorization code %s" % (client_id, code))
             return True
         except ModelError as ex:
             self.logger.error(ex)
             return False
 
     @query
-    def validate_grant_type(self, client_id, grant_type, client, request, *args, **kwargs):
+    def validate_grant_type(self, client_id, grant_type, client, request: Request, *args, **kwargs):
         """Ensure client is authorized to use the grant_type requested.
 
         :param client_id: Unicode client identifier
@@ -646,14 +669,15 @@ class Oauth2RequestValidator(RequestValidator):
             - Client Credentials Grant
             - Refresh Token Grant
         """
-        client = request.ormclient
-        if client.grant_type != grant_type:
-            raise ModelError('Client %s is not authorized to use the grant type %s' % (client_id, grant_type))
-        self.logger.info('Validate client %s with grant type %s' % (client_id, grant_type))
+
+        oauth_client: Oauth2Client = request.ormclient
+        if oauth_client.grant_type != grant_type:
+            raise ModelError("Client %s is not authorized to use the grant type %s" % (client_id, grant_type))
+        self.logger.info("Validate client %s with grant type %s" % (client_id, grant_type))
         return True
 
     @query
-    def validate_redirect_uri(self, client_id, redirect_uri, request, *args, **kwargs):
+    def validate_redirect_uri(self, client_id, redirect_uri, request: Request, *args, **kwargs):
         """Ensure client is authorized to redirect to the redirect_uri requested.
 
         All clients should register the absolute URIs of all URIs they intend
@@ -668,12 +692,13 @@ class Oauth2RequestValidator(RequestValidator):
             - Authorization Code Grant
             - Implicit Grant
         """
+
         session = operation.session
         try:
             client = session.query(Oauth2Client).filter_by(uuid=client_id).first()
             if client.redirect_uri != redirect_uri:
-                raise ModelError('Redirection uri does not match')
-            self.logger.info('Validate client %s redirection uri %s' % (client_id, redirect_uri))
+                raise ModelError("Redirection uri does not match")
+            self.logger.info("Validate client %s redirection uri %s" % (client_id, redirect_uri))
             return True
         except ModelError as ex:
             self.logger.error(ex)
@@ -696,10 +721,10 @@ class Oauth2RequestValidator(RequestValidator):
             - Resource Owner Password Credentials Grant (also indirectly)
             - Refresh Token Grant
         """
-        raise NotImplementedError('Subclasses must implement validate_refresh_token.')
+        raise NotImplementedError("Subclasses must implement validate_refresh_token.")
 
     @query
-    def validate_response_type(self, client_id, response_type, client, request, *args, **kwargs):
+    def validate_response_type(self, client_id, response_type, client, request: Request, *args, **kwargs):
         """Ensure client is authorized to use the response_type requested.
 
         :param client_id: Unicode client identifier
@@ -712,19 +737,20 @@ class Oauth2RequestValidator(RequestValidator):
             - Authorization Code Grant
             - Implicit Grant
         """
+
         session = operation.session
         try:
-            client = session.query(Oauth2Client).filter_by(uuid=client_id).first()
-            if client.response_type != response_type:
-                raise ModelError('Response type does not match')
-            self.logger.info('Validate client %s response type %s' % (client_id, response_type))
+            oauth_client = session.query(Oauth2Client).filter_by(uuid=client_id).first()
+            if oauth_client.response_type != response_type:
+                raise ModelError("Response type does not match")
+            self.logger.info("Validate client %s response type %s" % (client_id, response_type))
             return True
         except ModelError as ex:
             self.logger.error(ex)
             return False
 
     @query
-    def validate_scopes(self, client_id, scopes, client, request, *args, **kwargs):
+    def validate_scopes(self, client_id, scopes, client, request: Request, *args, **kwargs):
         """Ensure the client is authorized access to requested scopes.
 
         :param client_id: Unicode client identifier
@@ -741,20 +767,20 @@ class Oauth2RequestValidator(RequestValidator):
             - Jwt bearer Grant
         """
         try:
-            client = request.ormclient
-            client_scope = [ensure_text(c.name) for c in client.scope]
+            oauth_client: Oauth2Client = request.ormclient
+            client_scope = [ensure_text(c.name) for c in oauth_client.scope]
 
             if set(scopes).issubset(set(client_scope)):
-                self.logger.info('Validate client %s scopes %s' % (client_id, scopes))
+                self.logger.info("Validate client %s scopes %s" % (client_id, scopes))
                 return True
 
-            raise ModelError('Scopes does not match')
+            raise ModelError("Scopes does not match")
         except ModelError as ex:
             self.logger.error(ex)
             return False
 
     @query
-    def validate_user(self, username, password, client=None, request=None, *args, **kwargs):
+    def validate_user(self, username, password, client=None, request: Request = None, *args, **kwargs):
         """Ensure the username and password is valid.
 
         OBS! The validation should also set the user attribute of the request
@@ -777,12 +803,12 @@ class Oauth2RequestValidator(RequestValidator):
             request.pwd = password
             # request.login_ip
             res = self.authenticate_user(request)
-            self.logger.info('Validate user %s: %s' % (username, res))
+            self.logger.info("Validate user %s: %s" % (username, res))
             return res
         except ApiManagerError:
             return False
 
-    def authenticate_user(self, request, *args, **kwargs):
+    def authenticate_user(self, request: Request, *args, **kwargs):
         """Ensure the username and password is valid.
 
         :param request: The HTTP Request (oauthlib.common.Request)
@@ -796,16 +822,16 @@ class Oauth2RequestValidator(RequestValidator):
             - Jwt bearer Grant
         """
         try:
-            name_domain = request.user.split('@')
+            name_domain = request.user.split("@")
             name = name_domain[0]
             password = request.pwd
             login_ip = request.login_ip
             try:
                 domain = name_domain[1]
             except:
-                domain = 'local'
+                domain = "local"
         except:
-            raise errors.InvalidRequestError('User must be <user>@<domain>', request=request)
+            raise errors.InvalidRequestError("User must be <user>@<domain>", request=request)
 
         # validate input params
         self.controller.validate_login_params(name, domain, password, login_ip)
@@ -820,19 +846,17 @@ class Oauth2RequestValidator(RequestValidator):
 
         return True
 
-    def __set_user_attribs(self, user, attribs):
+    def __set_user_attribs(self, user: SystemUser, attribs):
         """Set user attributes"""
         user.set_attributes(attribs)
 
-    def __set_user_perms(self, dbuser, user):
-        """Set user permissions
-        """
+    def __set_user_perms(self, dbuser: User, user: SystemUser):
+        """Set user permissions"""
         perms = self.dbauth.get_login_permissions(dbuser)
-        compress_perms = binascii.b2a_base64(compress(jsonDumps(perms).encode('utf-8')))
+        compress_perms = binascii.b2a_base64(compress(jsonDumps(perms).encode("utf-8")))
         user.set_perms(compress_perms)
 
-    def __set_user_roles(self, dbuser, user):
-        """Set user roles
-        """
+    def __set_user_roles(self, dbuser: User, user: SystemUser):
+        """Set user roles"""
         roles = self.dbauth.get_login_roles(dbuser)
         user.set_roles([r.name for r in roles])

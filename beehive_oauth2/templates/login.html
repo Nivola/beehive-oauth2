@@ -8,6 +8,8 @@
                     <div class="panel-body">
                         <form role="form" action="{{ login_uri }}" method="POST" name="registrationForm" id="registrationForm" data-toggle="validator">
                             <fieldset>
+                                <legend>registration</legend>
+
 			                    {% if msg %}
 			                    <div id="msg" class="form-group has-error">
 			                        <small class="help-block">{{ _('Error') }}: {{ msg }}</small>

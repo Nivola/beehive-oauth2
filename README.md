@@ -1,5 +1,5 @@
 # beehive-oauth2
-__beehive-oauth2__ is the project that contains the authorization component of the Nivola CMP platform. 
+__beehive-oauth2__ is the project that contains the authorization component of the nivola cmp platform. 
 The platform must ensure profiled user access. User can be verified using different identity provider.
 Platform verify each time a user make a request the needed authorization respect objects and operations invoked.
 

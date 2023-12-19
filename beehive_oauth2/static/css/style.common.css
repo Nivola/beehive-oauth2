@@ -41,7 +41,8 @@ body {
     margin-right: 0px;
     position: absolute;
     padding-top: 10px;
-    padding: 1px;
+    padding-left: 1px;
+    padding-bottom: 1px;
     padding-right: 40px;   
     width: 100%;  
     overflow-x: hidden; 
@@ -468,19 +469,19 @@ table.dataTable thead .sorting_desc_disabled {
 table.dataTable thead .sorting_asc:after {
     content: "\f0de";
     float: right;
-    font-family: fontawesome;
+    font-family: 'FontAwesome', sans-serif;
 }
 
 table.dataTable thead .sorting_desc:after {
     content: "\f0dd";
     float: right;
-    font-family: fontawesome;
+    font-family: 'FontAwesome', sans-serif;
 }
 
 table.dataTable thead .sorting:after {
     content: "\f0dc";
     float: right;
-    font-family: fontawesome;
+    font-family: 'FontAwesome', sans-serif;
     color: rgba(50,50,50,.5);
 }
 
@@ -930,7 +931,7 @@ if it's not present, don't show loader */
 
 .btn-xxs i {
     display: inline-block;
-    font: normal normal normal 12px/1 FontAwesome;
+    font: normal normal normal 12px/1 'FontAwesome', sans-serif;
     font-size: inherit;
     text-rendering: auto;
     -webkit-font-smoothing: antialiased;

@@ -1,26 +1,29 @@
-
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2022 CSI-Piemonte
+# (C) Copyright 2018-2023 CSI-Piemonte
 
-import ujson as json
-from beecell.simple import id_gen, truncate, get_value, random_password,\
-    token_gen, format_date
+from beecell.simple import (
+    id_gen,
+    truncate,
+    get_value,
+    random_password,
+    token_gen,
+)
 import os
 from inspect import getfile
-from datetime import datetime
-from flask import request, session
+from flask import request
 from beecell.flask.render import render_template
 from flask.helpers import url_for
 from copy import deepcopy
-from oauthlib.oauth2 import WebApplicationServer, \
-                            MobileApplicationServer, \
-                            LegacyApplicationServer, \
-                            BackendApplicationServer
+from oauthlib.oauth2 import (
+    WebApplicationServer,
+    MobileApplicationServer,
+    LegacyApplicationServer,
+    BackendApplicationServer,
+)
 from oauthlib.oauth2 import FatalClientError, OAuth2Error
-from beehive.module.auth.controller import AuthController, AuthObject, User, Token, Role
+from beehive.module.auth.controller import AuthController, User, Token, Role
 from beehive_oauth2.model import Oauth2DbManager, GrantType
-from beehive_oauth2.validator import Oauth2RequestValidator
 from beehive_oauth2.jwtgrant import JwtApplicationServer
 from beehive.common.apimanager import ApiManagerError
 from beehive.common.data import operation, trace
@@ -30,37 +33,25 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
 import binascii
 from beehive.common.controller.authorization import BaseAuthController
-from beehive_oauth2.model import Oauth2Client as ModelOauth2Client, \
-    Oauth2Scope as ModelOauth2Scope, \
-    Oauth2AuthorizationCode as ModelOauth2AuthorizationCode
+from beehive_oauth2.model import (
+    Oauth2Client as ModelOauth2Client,
+    Oauth2Scope as ModelOauth2Scope,
+    Oauth2AuthorizationCode as ModelOauth2AuthorizationCode,
+)
 import logging
-from flask_login import LoginManager, login_url
-from beecell.auth.base import SystemUser as BaseSystemUser
-from beehive.common.model.authorization import AuthDbManager
+from flask_login import LoginManager
+from typing import Union
 
-
-class SystemUser(BaseSystemUser):
-    @staticmethod
-    def load_user(userid):
-        """Function to use with @self.login_manager.user_loader
-        """
-        suser = None
-
-        # load user only for dynamic request
-        if request.path.find('static') < 0:
-            # Return an instance of the User model
-            user = session.get('user_obj')
-
-            # create SystemUser instance
-            suser = SystemUser.create(user)
-
-        return suser
+from .oauth2client import Oauth2Client
+from .oauth2scope import Oauth2Scope
+from .oauth2authorizationcode import Oauth2AuthorizationCode
+from .systemuser import SystemUser
 
 
 class Oauth2Controller(AuthController):
-    """Oauth2 controller.
-    """
-    version = 'v1.0'
+    """Oauth2 controller."""
+
+    version = "v1.0"
 
     # authorize state
     LOGIN = 0
@@ -73,11 +64,7 @@ class Oauth2Controller(AuthController):
         # get module path
         path = os.path.dirname(getfile(Oauth2Controller))
 
-        self.child_classes = [
-            Oauth2Client,
-            Oauth2Scope,
-            Oauth2AuthorizationCode
-        ]
+        self.child_classes = [Oauth2Client, Oauth2Scope, Oauth2AuthorizationCode]
         self.manager = Oauth2DbManager()
 
         try:
@@ -85,8 +72,8 @@ class Oauth2Controller(AuthController):
             self.app = module.api_manager.app
 
             if self.app is not None:
-                self.app.template_folder = '%s/templates' % path
-                self.app.static_folder = '%s/static' % path
+                self.app.template_folder = "%s/templates" % path
+                self.app.static_folder = "%s/static" % path
 
                 # setup app babel
                 # self.app.babel = Babel(app=self.app, default_locale='it', default_timezone='utc')
@@ -98,7 +85,7 @@ class Oauth2Controller(AuthController):
 
                 # setup app login manager
                 self.app.login_manager = LoginManager(self.app)
-                login_view = 'login'
+                login_view = "login"
                 self.app.login_manager.login_view = login_view
 
                 @self.app.login_manager.user_loader
@@ -106,12 +93,18 @@ class Oauth2Controller(AuthController):
                     return SystemUser.load_user(userid)
 
             # get module reference
-            self.authmod = self.module.api_manager.get_module('AuthModule')
+            self.authmod = self.module.api_manager.get_module("AuthModule")
 
-            self.auth_uri = '%s/%s/oauth2/authorize' % (self.module.api_manager.oauth2_endpoint, self.version)
-            self.token_uri = '%s/%s/oauth2/token' % (self.module.api_manager.oauth2_endpoint, self.version)
+            self.auth_uri = "%s/%s/oauth2/authorize" % (
+                self.module.api_manager.oauth2_endpoint,
+                self.version,
+            )
+            self.token_uri = "%s/%s/oauth2/token" % (
+                self.module.api_manager.oauth2_endpoint,
+                self.version,
+            )
         except:
-            self.logger.warning('', exc_info=True)
+            self.logger.warning("", exc_info=True)
 
     def init_object(self):
         """Register object types, objects and permissions related to module.
@@ -119,7 +112,15 @@ class Oauth2Controller(AuthController):
         """
         BaseAuthController.init_object(self)
 
-    def get_server(self, grant_type):
+    def get_server(
+        self, grant_type
+    ) -> Union[
+        WebApplicationServer,
+        MobileApplicationServer,
+        LegacyApplicationServer,
+        BackendApplicationServer,
+        JwtApplicationServer,
+    ]:
         """Get server
 
         :param grant_type: grant type. One of:
@@ -140,6 +141,8 @@ class Oauth2Controller(AuthController):
 
         :raise ApiManagerError:
         """
+        from .validator import Oauth2RequestValidator
+
         validator = Oauth2RequestValidator(self)
 
         if grant_type == GrantType.AUTHORIZATION_CODE:
@@ -187,10 +190,10 @@ class Oauth2Controller(AuthController):
 
             # Not necessarily in session but they need to be
             # accessible in the POST view after form submit.
-            credentials.pop('request')
-            credentials['scope'] = scopes
+            credentials.pop("request")
+            credentials["scope"] = scopes
 
-            self.logger.debug('Validate client credentials %s' % credentials)
+            self.logger.debug("Validate client credentials %s" % credentials)
             return credentials
         # Errors embedded in the redirect URI back to the client
         except OAuth2Error as e:
@@ -215,12 +218,12 @@ class Oauth2Controller(AuthController):
         :raise ApiManagerError:
         """
         credentials = None
-        if 'oauth2_credentials' in session:
+        if "oauth2_credentials" in session:
             # get credentials
-            credentials = session['oauth2_credentials']
-        user = session.get('oauth2_user', None)
-        credentials['user'] = user['id']
-        self.logger.debug('Get client credentials %s in session' % credentials)
+            credentials = session["oauth2_credentials"]
+        user = session.get("oauth2_user", None)
+        credentials["user"] = user["id"]
+        self.logger.debug("Get client credentials %s in session" % credentials)
         return credentials
 
     def save_credentials(self, session, credentials):
@@ -231,8 +234,8 @@ class Oauth2Controller(AuthController):
         :return: None
         :raise ApiManagerError:
         """
-        session['oauth2_credentials'] = credentials
-        self.logger.debug('Set client credentials %s in session' % credentials)
+        session["oauth2_credentials"] = credentials
+        self.logger.debug("Set client credentials %s in session" % credentials)
 
     def check_credentials(self, session, credentials):
         """Check client credentials in session
@@ -243,11 +246,12 @@ class Oauth2Controller(AuthController):
         :raise ApiManagerError:
         """
         # get credentials
-        session_credentials = session['oauth2_credentials']
+        session_credentials = session["oauth2_credentials"]
 
         # check credentials in session meet credentials provided
-        if credentials.get('client_id') != session_credentials.get('client_id') or\
-           credentials.get('state') != session_credentials.get('state'):
+        if credentials.get("client_id") != session_credentials.get("client_id") or credentials.get(
+            "state"
+        ) != session_credentials.get("state"):
             # invalidate session
             self.invalidate_session(session)
             return False
@@ -271,23 +275,22 @@ class Oauth2Controller(AuthController):
         :raise ApiManagerError:
         """
         # get cookies
-        self.logger.debug('Client cookies: %s' % request.cookies)
+        self.logger.debug("Client cookies: %s" % request.cookies)
 
         # check session
-        self.logger.debug('Active user session: %s' % session.sid)
+        self.logger.debug("Active user session: %s" % session.sid)
 
         # check resource owner already login
-        user = session.get('oauth2_user', None)
-        self.logger.debug('Active user in session: %s' % user)
+        user = session.get("oauth2_user", None)
+        self.logger.debug("Active user in session: %s" % user)
         if user is not None:
             return user
-        self.logger.warning('No valid user found')
+        self.logger.warning("No valid user found")
         return None
 
     def check_login_scopes(self, user):
-        """
-        """
-        user_scope = user.get('scope', None)
+        """ """
+        user_scope = user.get("scope", None)
         if user_scope is not None:
             return user_scope
         return None
@@ -309,11 +312,16 @@ class Oauth2Controller(AuthController):
             server = self.get_server(GrantType.AUTHORIZATION_CODE)
 
             headers, body, status = server.create_authorization_response(
-                uri, http_method=http_method, body=body, headers=headers,
-                scopes=scopes, credentials=credentials)
+                uri,
+                http_method=http_method,
+                body=body,
+                headers=headers,
+                scopes=scopes,
+                credentials=credentials,
+            )
 
             res = [body, status, headers]
-            self.logger.debug('Create authorization: %s' % res)
+            self.logger.debug("Create authorization: %s" % res)
             return res
 
         # Errors embedded in the redirect URI back to the client
@@ -338,12 +346,12 @@ class Oauth2Controller(AuthController):
         :return: credentials
         :raise ApiManagerError:
         """
-        msg = ''
+        msg = ""
         # get client_id
-        client_id = session['oauth2_credentials']['client_id']
+        client_id = session["oauth2_credentials"]["client_id"]
         # get client scope
-        scope = session['oauth2_credentials']['scope']
-        self.logger.debug('Get client %s scopes: %s' % (client_id, scope))
+        scope = session["oauth2_credentials"]["scope"]
+        self.logger.debug("Get client %s scopes: %s" % (client_id, scope))
         return msg, client_id, scope
 
     def set_user_scopes(self, session, scopes):
@@ -354,15 +362,15 @@ class Oauth2Controller(AuthController):
         :return: credentials
         :raise ApiManagerError:
         """
-        credentials = session['oauth2_credentials']
-        credentials['scope'] = scopes
-        user = session['oauth2_user']
-        user['scope'] = scopes
+        credentials = session["oauth2_credentials"]
+        credentials["scope"] = scopes
+        user = session["oauth2_user"]
+        user["scope"] = scopes
 
-        self.logger.debug('Set user %s scopes: %s' % (user['name'], scopes))
+        self.logger.debug("Set user %s scopes: %s" % (user["name"], scopes))
         return deepcopy(credentials)
 
-    @trace(entity='Token', op='insert')
+    @trace(entity="Token", op="insert")
     def create_token(self, uri, http_method, body, headers, session, login_ip):
         """Create access token
 
@@ -372,19 +380,18 @@ class Oauth2Controller(AuthController):
         :raise ApiManagerError:
         """
         try:
-            grant_type = get_value(body, 'grant_type', None, exception=True)
+            grant_type = get_value(body, "grant_type", None, exception=True)
 
             # set token_uri
-            body['token_uri'] = self.token_uri
+            body["token_uri"] = self.token_uri
 
             # set login ip
-            body['login_ip'] = login_ip
+            body["login_ip"] = login_ip
 
             # get oauthlib.oauth2 server
             credentials = None
             server = self.get_server(grant_type)
             headers, body, status = server.create_token_response(uri, http_method, body, headers, credentials)
-
             return (body, status, headers)
 
         # Errors embedded in the redirect URI back to the client
@@ -406,9 +413,9 @@ class Oauth2Controller(AuthController):
             raise ApiManagerError(str(ex), code=400)
 
     #
-    # login, logout
+    # login, logout\
     #
-    @trace(entity='Token', op='insert')
+    @trace(entity="Token", op="insert")
     def login(self, session, name, domain, password, login_ip):
         """Oauth2 login
 
@@ -432,14 +439,11 @@ class Oauth2Controller(AuthController):
         user, attrib = self.base_login(name, domain, password, login_ip, dbuser, dbuser_attribs)
 
         # update session info
-        session['oauth2_user'] = {
-            'id': dbuser.id,
-            'name': dbuser.name
-        }
+        session["oauth2_user"] = {"id": dbuser.id, "name": dbuser.name}
 
         return True
 
-    @trace(entity='Token', op='insert')
+    @trace(entity="Token", op="insert")
     def logout(self, session):
         """Oauth2 logout
 
@@ -453,23 +457,23 @@ class Oauth2Controller(AuthController):
         key_prefix = self.app.session_interface.key_prefix
         serializer = self.app.session_interface.serializer
 
-        #domain = self.get_cookie_domain(self.app)
-        #path = self.get_cookie_path(self.app)
-        '''if not session:
+        # domain = self.get_cookie_domain(self.app)
+        # path = self.get_cookie_path(self.app)
+        """if not session:
             if session.modified:
                 redis.delete(key_prefix + session.sid)
                 #response.delete_cookie(self.app.session_cookie_name,
                 #                       domain=domain, path=path)
-            return'''
+            return"""
 
         # remove user session
-        user = session.get('oauth2_user', None)
+        user = session.get("oauth2_user", None)
         if user is None:
-            user = {'id':None, 'name':None}
-        self.logger.debug('Get user in session: %s' % user)
-        session['_invalidate'] = True
+            user = {"id": None, "name": None}
+        self.logger.debug("Get user in session: %s" % user)
+        session["_invalidate"] = True
 
-        #self.delete_user_session(session.sid)
+        # self.delete_user_session(session.sid)
         return user
 
     def login_domains(self):
@@ -485,7 +489,7 @@ class Oauth2Controller(AuthController):
                 domains.append([domain, auth_provider.__class__.__name__])
             return domains
         except ApiManagerError as ex:
-            self.logger.error('[%s] %s' % (ex.code, ex.value), exc_info=True)
+            self.logger.error("[%s] %s" % (ex.code, ex.value), exc_info=True)
             raise
 
     def login_page(self, redirect_uri):
@@ -505,7 +509,7 @@ class Oauth2Controller(AuthController):
             msg = ex.value
 
         if redirect_uri is None:
-            redirect_uri = '/%s/sso/identity/summary/' % self.version
+            redirect_uri = "/%s/sso/identity/summary/" % self.version
 
         return domains, redirect_uri
 
@@ -524,25 +528,30 @@ class Oauth2Controller(AuthController):
         try:
             controller = self.authmod.get_controller()
             identity = controller.get_identity(token)
-            '''
+            """
             {'uid':..., 'user':..., 'timestamp':..., 'pubkey':...,
              'seckey':...}
-            '''
+            """
 
         except ApiManagerError as ex:
-            self.logger.error('[%s] %s' % (ex.code, ex.value))
+            self.logger.error("[%s] %s" % (ex.code, ex.value))
             msg = ex.value
 
         if summary is True:
-            self.logger.debug('Use page style: %s' % style)
-            return render_template('identity.html', msg=msg, identity=identity, style=url_for('static', filename=style))
+            self.logger.debug("Use page style: %s" % style)
+            return render_template(
+                "identity.html",
+                msg=msg,
+                identity=identity,
+                style=url_for("static", filename=style),
+            )
         else:
             return identity
 
     #
     # scope manipulation methods
     #
-    @trace(entity='Oauth2Scope', op='view')
+    @trace(entity="Oauth2Scope", op="view")
     def get_scope(self, oid):
         """Get single scope.
 
@@ -552,7 +561,7 @@ class Oauth2Controller(AuthController):
         """
         return self.get_entity(Oauth2Scope, ModelOauth2Scope, oid)
 
-    @trace(entity='Oauth2Scope', op='view')
+    @trace(entity="Oauth2Scope", op="view")
     def get_scopes(self, *args, **kvargs):
         """Get scopes or single scope.
 
@@ -563,9 +572,10 @@ class Oauth2Controller(AuthController):
         :return: list of Oauth2Scope
         :raise ApiManagerError:
         """
+
         def get_entities(*args, **kvargs):
             # get filter field
-            #permission = kvargs.get('permission', None)
+            # permission = kvargs.get('permission', None)
 
             # get all scopes
             scopes, total = self.manager.get_scopes(*args, **kvargs)
@@ -575,8 +585,8 @@ class Oauth2Controller(AuthController):
         res, total = self.get_paginated_entities(Oauth2Scope, get_entities, *args, **kvargs)
         return res, total
 
-    @trace(entity='Oauth2Scope', op='insert')
-    def add_scope(self, name=None, desc=''):
+    @trace(entity="Oauth2Scope", op="insert")
+    def add_scope(self, name=None, desc=""):
         """Add new scope.
 
         :param name: name of the scope
@@ -585,7 +595,7 @@ class Oauth2Controller(AuthController):
         :raise ApiManagerError:
         """
         # check authorization
-        self.check_authorization(Oauth2Scope.objtype, Oauth2Scope.objdef, None, 'insert')
+        self.check_authorization(Oauth2Scope.objtype, Oauth2Scope.objdef, None, "insert")
 
         try:
             objid = id_gen()
@@ -594,19 +604,19 @@ class Oauth2Controller(AuthController):
             # add object and permission
             Oauth2Scope(self, oid=scope.id).register_object([objid], desc=desc)
 
-            self.logger.debug('Add new scope: %s' % name)
+            self.logger.debug("Add new scope: %s" % name)
             return scope.uuid
-        except (TransactionError) as ex:
+        except TransactionError as ex:
             self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex, code=ex.code)
-        except (Exception) as ex:
+        except Exception as ex:
             self.logger.error(str(ex), exc_info=True)
             raise ApiManagerError(str(ex), code=400)
 
     #
     # client manipulation methods
     #
-    @trace(entity='Oauth2Client', op='view')
+    @trace(entity="Oauth2Client", op="view")
     def get_client(self, oid):
         """Get single client.
 
@@ -618,7 +628,7 @@ class Oauth2Controller(AuthController):
         """
         return self.get_entity(Oauth2Client, ModelOauth2Client, oid)
 
-    @trace(entity='Oauth2Client', op='view')
+    @trace(entity="Oauth2Client", op="view")
     def get_clients(self, *args, **kvargs):
         """Get clients or single client.
 
@@ -629,6 +639,7 @@ class Oauth2Controller(AuthController):
         :return: list of Oauth2Client
         :raise ApiManagerError:
         """
+
         def get_entities(*args, **kvargs):
             # get all clients
             clients, total = self.manager.get_clients(*args, **kvargs)
@@ -638,9 +649,19 @@ class Oauth2Controller(AuthController):
         res, total = self.get_paginated_entities(Oauth2Client, get_entities, *args, **kvargs)
         return res, total
 
-    @trace(entity='Oauth2Client', op='insert')
-    def add_client(self, name=None, grant_type=None, redirect_uri=None, desc='', response_type='code', scopes=[],
-                   expiry_date=None, active=True, user=None):
+    @trace(entity="Oauth2Client", op="insert")
+    def add_client(
+        self,
+        name=None,
+        grant_type=None,
+        redirect_uri=None,
+        desc="",
+        response_type="code",
+        scopes=[],
+        expiry_date=None,
+        active=True,
+        user=None,
+    ):
         """Add new client.
 
         :param name: client name
@@ -666,12 +687,12 @@ class Oauth2Controller(AuthController):
         :raise ApiManagerError:
         """
         params = {
-            'name': name,
-            'desc': desc,
-            'grant_type': grant_type,
-            'response_type': response_type,
-            'redirect_uri': redirect_uri,
-            'expiry_date': expiry_date
+            "name": name,
+            "desc": desc,
+            "grant_type": grant_type,
+            "response_type": response_type,
+            "redirect_uri": redirect_uri,
+            "expiry_date": expiry_date,
         }
 
         # if expiry_date is not None:
@@ -679,42 +700,55 @@ class Oauth2Controller(AuthController):
         #    params['expiry_date'] = datetime(int(y), int(m), int(d))
 
         # check authorization
-        self.check_authorization(Oauth2Client.objtype, Oauth2Client.objdef, None, 'insert')
+        self.check_authorization(Oauth2Client.objtype, Oauth2Client.objdef, None, "insert")
 
         if user is not None:
             user_id = self.get_user(user).oid
         else:
             # create client internal user
-            user_name = '%s@local' % name
-            user_desc = 'Client %s user' % name
-            user_uuid = self.add_user(name=user_name, storetype='DBUSER', active=True, password=None, desc=user_desc,
-                                      expiry_date=expiry_date, base=True, system=False)
+            user_name = "%s@local" % name
+            user_desc = "Client %s user" % name
+            user_uuid = self.add_user(
+                name=user_name,
+                storetype="DBUSER",
+                active=True,
+                password=None,
+                desc=user_desc,
+                expiry_date=expiry_date,
+                base=True,
+                system=False,
+            )
             user_id = self.get_user(user_uuid).oid
 
         try:
             if grant_type == GrantType.JWT_BEARER:
                 client_secret = None
-                private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048,
-                                                       backend=default_backend())
+                private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048, backend=default_backend())
                 public_key = private_key.public_key()
-                pem = public_key.public_bytes(encoding=serialization.Encoding.PEM,
-                                              format=serialization.PublicFormat.SubjectPublicKeyInfo)
+                pem = public_key.public_bytes(
+                    encoding=serialization.Encoding.PEM,
+                    format=serialization.PublicFormat.SubjectPublicKeyInfo,
+                )
                 pubkey = binascii.b2a_base64(pem)
-                pem = private_key.private_bytes(encoding=serialization.Encoding.PEM,
-                                                format=serialization.PrivateFormat.PKCS8,
-                                                encryption_algorithm=serialization.NoEncryption())
+                pem = private_key.private_bytes(
+                    encoding=serialization.Encoding.PEM,
+                    format=serialization.PrivateFormat.PKCS8,
+                    encryption_algorithm=serialization.NoEncryption(),
+                )
                 seckey = binascii.b2a_base64(pem)
             else:
                 client_secret = random_password(length=40)
                 pubkey = None
                 seckey = None
 
-            params.update({
-                'client_secret': client_secret,
-                'user_id': user_id,
-                'private_key': seckey,
-                'public_key': pubkey
-            })
+            params.update(
+                {
+                    "client_secret": client_secret,
+                    "user_id": user_id,
+                    "private_key": seckey,
+                    "public_key": pubkey,
+                }
+            )
             objid = id_gen()
             client = self.manager.add_client(objid=objid, **params)
 
@@ -724,26 +758,26 @@ class Oauth2Controller(AuthController):
                     scope_obj = self.get_entity(Oauth2Scope, ModelOauth2Scope, scope)
                     client.scope.append(scope_obj.model)
                 except:
-                    self.logger.warning('Scope %s was not found' % scope)
-            params['scopes'] = scopes
-            params['expiry_date'] = expiry_date
+                    self.logger.warning("Scope %s was not found" % scope)
+            params["scopes"] = scopes
+            params["expiry_date"] = expiry_date
 
             # add object and permission
             Oauth2Client(self, oid=client.id).register_object([objid], desc=desc)
 
-            self.logger.debug('Add new client: %s' % name)
+            self.logger.debug("Add new client: %s" % name)
             return client.uuid
-        except (TransactionError) as ex:
+        except TransactionError as ex:
             self.logger.error(ex, exc_info=True)
             raise ApiManagerError(ex, code=ex.code)
-        except (Exception) as ex:
+        except Exception as ex:
             self.logger.error(str(ex), exc_info=True)
             raise ApiManagerError(str(ex), code=400)
 
     #
     # client manipulation methods
     #
-    @trace(entity='Oauth2AuthorizationCode', op='view')
+    @trace(entity="Oauth2AuthorizationCode", op="view")
     def get_authorization_code(self, oid):
         """Get single client.
 
@@ -755,7 +789,7 @@ class Oauth2Controller(AuthController):
         """
         return self.get_entity(Oauth2AuthorizationCode, ModelOauth2AuthorizationCode, oid)
 
-    @trace(entity='Oauth2AuthorizationCode', op='view')
+    @trace(entity="Oauth2AuthorizationCode", op="view")
     def get_authorization_codes(self, *args, **kvargs):
         """Get clients or single client.
 
@@ -771,26 +805,40 @@ class Oauth2Controller(AuthController):
         :return: list of Oauth2Client
         :raise ApiManagerError:
         """
-        user = kvargs.pop('user', None)
-        client = kvargs.pop('client', None)
+        user = kvargs.pop("user", None)
+        client = kvargs.pop("client", None)
         if user is not None:
-            kvargs['user_id'] = self.get_user(user).oid
+            kvargs["user_id"] = self.get_user(user).oid
         if client is not None:
-            kvargs['client_id'] = self.get_client(client).oid
+            kvargs["client_id"] = self.get_client(client).oid
 
         # check authorization
         if operation.authorize is True:
-            self.check_authorization(Oauth2AuthorizationCode.objtype, Oauth2AuthorizationCode.objdef, '*', 'view')
+            self.check_authorization(
+                Oauth2AuthorizationCode.objtype,
+                Oauth2AuthorizationCode.objdef,
+                "*",
+                "view",
+            )
 
         codes, total = self.manager.get_authorization_codes(*args, **kvargs)
         res = []
         for code in codes:
-            res.append(Oauth2AuthorizationCode(self, oid=code.id, objid=None, name=None, active=None, desc=None,
-                                               model=code))
+            res.append(
+                Oauth2AuthorizationCode(
+                    self,
+                    oid=code.id,
+                    objid=None,
+                    name=None,
+                    active=None,
+                    desc=None,
+                    model=code,
+                )
+            )
 
         return res, total
 
-    @trace(entity='Oauth2AuthorizationCode', op='delete')
+    @trace(entity="Oauth2AuthorizationCode", op="delete")
     def delete_authorization_code(self, code):
         """Get clients or single client.
 
@@ -799,7 +847,12 @@ class Oauth2Controller(AuthController):
         :raise ApiManagerError:
         """
         # check authorization
-        self.check_authorization(Oauth2AuthorizationCode.objtype, Oauth2AuthorizationCode.objdef, '*', 'delete')
+        self.check_authorization(
+            Oauth2AuthorizationCode.objtype,
+            Oauth2AuthorizationCode.objdef,
+            "*",
+            "delete",
+        )
         self.manager.remove_authorization_code(code)
         return None
 
@@ -813,7 +866,7 @@ class Oauth2Controller(AuthController):
         :return: list of flask session
         :raise ApiManagerError:
         """
-        self.check_authorization(User.objtype, User.objdef, '*', 'use')
+        self.check_authorization(User.objtype, User.objdef, "*", "use")
 
         redis = self.app.session_interface.redis
         key_prefix = self.app.session_interface.key_prefix
@@ -821,9 +874,9 @@ class Oauth2Controller(AuthController):
 
         sessions = []
         if sid is not None:
-            keys = ['%s%s' % (key_prefix, sid)]
+            keys = ["%s%s" % (key_prefix, sid)]
         else:
-            keys = redis.keys('%s*' % key_prefix)
+            keys = redis.keys("%s*" % key_prefix)
 
         for key in keys:
             val = redis.get(key)
@@ -832,10 +885,12 @@ class Oauth2Controller(AuthController):
                     data = serializer.loads(val)
                 except:
                     data = val
-            data['ttl'] = redis.ttl(key)
-            data['sid'] = key[len(key_prefix):]
+            else:
+                raise ApiManagerError("Session not found", code=404)
+            data["ttl"] = redis.ttl(key)
+            data["sid"] = key[len(key_prefix) :]
             sessions.append(data)
-        self.logger.debug('Get user sessions: %s' % truncate(sessions))
+        self.logger.debug("Get user sessions: %s" % truncate(sessions))
         return sessions
 
     def delete_user_session(self, sid):
@@ -848,174 +903,3 @@ class Oauth2Controller(AuthController):
         redis = self.app.session_interface.redis
         key_prefix = self.app.session_interface.key_prefix
         redis.delete(key_prefix + sid)
-
-
-class Oauth2Object(AuthObject):
-    objtype = 'oauth2'
-    objdef = 'abstract'
-    objdesc = 'Oauth2 abstract object'
-
-    @property
-    def manager(self):
-        return self.controller.manager
-
-
-class Oauth2Scope(Oauth2Object):
-    objdef = 'Oauth2Scope'
-    objdesc = 'Oauth2 Scope'
-    objuri = 'nas/oauth2/scope'
-
-    def __init__(self, *args, **kvargs):
-        Oauth2Object.__init__(self, *args, **kvargs)
-
-        self.update_object = self.manager.update_scope
-        self.delete_object = self.manager.remove_scope
-        self.register = True
-
-
-# class Oauth2Token(Oauth2Object):
-#     objdef = 'Oauth2Token'
-#     objdesc = 'Oauth2 Token'
-#     objuri = 'oauth2/token'
-
-
-class Oauth2AuthorizationCode(Oauth2Object):
-    objdef = 'Oauth2AuthorizationCode'
-    objdesc = 'Oauth2 Authorization Code'
-    objuri = 'nas/oauth2/authorization_codes'
-
-    def __init__(self, controller, oid=None, objid=None, name=None, desc=None, active=None, model=None):
-        self.logger = logging.getLogger(self.__class__.__module__ + '.' + self.__class__.__name__)
-
-        self.controller = controller
-        self.model = model # db model if exist
-        self.oid = oid # object internal db id
-        self.objid = '*'
-
-        # object uri
-        self.objuri = '/%s/%s/%s' % (self.controller.version, self.objuri, self.oid)
-
-        self.child_classes = []
-        self.auth_db_manager = AuthDbManager()
-
-        self.delete_object = self.manager.remove_authorization_code
-
-    def info(self):
-        """Get infos.
-
-        :return: dict with infos
-        :raise ApiManagerError:
-        """
-        expired = False
-        if self.model.expires_at <= datetime.today():
-            expired = True
-        code = json.loads(self.model.code)
-        info = {
-            'id':self.model.id,
-            'client':self.model.client.uuid,
-            'user':self.model.user.uuid,
-            'scope':[s.name for s in self.model.scope],
-            'code':code['code'],
-            'state':code['state'],
-            'expires_at':format_date(self.model.expires_at),
-            'expired':expired,
-            'redirect_uri':self.model.redirect_uri,
-        }
-        return info
-
-    def detail(self):
-        """Get details.
-
-        :return: dict with details
-        :raise ApiManagerError:
-        """
-        info = self.info()
-        return info
-
-
-class Oauth2Client(Oauth2Object):
-    objdef = 'Oauth2Client'
-    objdesc = 'Oauth2 Client'
-    objuri = 'nas/oauth2/clients'
-
-    def __init__(self, *args, **kvargs):
-        Oauth2Object.__init__(self, *args, **kvargs)
-
-        self.update_object = self.manager.update_client
-        self.delete_object = self.manager.remove_client
-        self.register = True
-
-    def info(self):
-        """Get infos.
-
-        :return: dict with infos
-        :raise ApiManagerError:
-        """
-        info = Oauth2Object.info(self)
-        info.update({
-            'grant_type': self.model.grant_type,
-            'response_type': self.model.response_type,
-            'scopes': ','.join([i.name for i in self.model.scope])
-        })
-        return info
-
-    def detail(self):
-        """Get details.
-
-        :return: dict with details
-        :raise ApiManagerError:
-        """
-        info = self.info()
-        info.update({
-            'client_secret': self.model.client_secret,
-            'client_email': self.model.user.name,
-            'redirect_uri': self.model.redirect_uri,
-            'private_key': self.model.private_key,
-            'public_key': self.model.public_key,
-            'auth_uri': self.controller.auth_uri,
-            'token_uri': self.controller.token_uri
-        })
-        return info
-
-    @trace(op='delete')
-    def delete(self, soft=False, **kvargs):
-        """Delete entity.
-
-        :param kvargs: custom params
-        :param authorize: if True check permissions for authorization
-        :param soft: if True make a soft delete
-        :return: None
-        :raise ApiManagerError:
-        """
-        if self.delete_object is None:
-            raise ApiManagerError('Delete is not supported for %s:%s' % (self.objtype, self.objdef))
-
-        # verify permissions
-        self.verify_permisssions('delete')
-
-        # custom action
-        if self.pre_delete is not None:
-            kvargs = self.pre_delete(**kvargs)
-
-        try:
-            if soft is False:
-                # delete client
-                self.delete_object(oid=self.oid)
-                if self.register is True:
-                    # remove object and permissions
-                    self.deregister_object(self.objid.split('//'))
-
-                user_name = '%s@local' % self.name
-                if self.controller.exist_user(user_name) is True:
-                    # delete client internal user
-                    user = self.controller.get_user(user_name)
-                    user.delete()
-
-                self.logger.debug('Delete %s: %s' % (self.objdef, self.oid))
-            else:
-                self.delete_object(self.model)
-                self.logger.debug('Soft delete %s: %s' % (self.objdef, self.oid))
-            return None
-        except TransactionError as ex:
-            self.logger.error(ex.desc, exc_info=True)
-            raise ApiManagerError(ex, code=ex.code)

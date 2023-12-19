@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2022 CSI-Piemonte
+# (C) Copyright 2018-2023 CSI-Piemonte
 
 from beehive.common.apimanager import ApiModule
 from beehive_oauth2.view import Oauth2Api
@@ -9,11 +9,11 @@ from beehive.common.controller.authorization import AuthenticationManager
 
 
 class Oauth2Module(ApiModule):
-    """Oauth2 Beehive Module
-    """
+    """Oauth2 Beehive Module"""
+
     def __init__(self, api_manger):
-        self.name = 'Oauth2Module'
-        
+        self.name = "Oauth2Module"
+
         ApiModule.__init__(self, api_manger, self.name)
 
         self.apis = [Oauth2Api]

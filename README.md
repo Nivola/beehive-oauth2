@@ -1,5 +1,5 @@
 # beehive-oauth2
-__beehive-oauth2__ is the project that contains the authorization component of the nivola cmp platform. 
+__beehive-oauth2__ is the project that contains the authorization component of the nivola cmp platform.
 The platform must ensure profiled user access. User can be verified using different identity provider.
 Platform verify each time a user make a request the needed authorization respect objects and operations invoked.
 
@@ -44,12 +44,12 @@ We use Semantic Versioning for versioning. (https://semver.org)
 See the list of contributors who participated in this project in the file AUTHORS.md contained in each specific project.
 
 ## Copyright
-CSI Piemonte - 2018-2022
+CSI Piemonte - 2018-2024
 
 Regione Piemonte - 2020-2022
 
 ## License
-See the *LICENSE.txt file contained in each specific project for details.
+See EUPL v1_2 EN-LICENSE.txt or EUPL v1_2 IT-LICENSE.txt file for details
 
 ## Community site (Optional)
 At https://www.nivolapiemonte.it/ could find all the informations about the project.

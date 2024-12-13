@@ -1,83 +1,95 @@
 # Changelog
 
-## Version 1.15.0
+## Version 1.16.0 (2024-03-26)
 
-* Fixed ...
-  * minor changes
+Rilascio nuove funzionalità
+* Fixed
+  - update authors using git shortlog
+  - headers updated
+  - Update manifest
 
-## Version 1.14.0
+## Version 1.15.3 (2024-03-11)
 
-* Added ...
-  * reduce session permission in order to lay only one role
+Rilascio nuove funzionalità
 
-* Fixed ...
-  * controller refactoring
-  * model refactoring
-  * css
+## Version 1.15.0 (2025-10-12)
 
-## Version 1.13.0
+Rilascio nuove funzionalità
+* Fixed
+  - minor changes
 
-* Fixed ...
-  * minor fixes
+## Version 1.14.0 (2023-06-22)
 
-## Version 1.12.0
+Rilascio nuove funzionalità
+* Added
+  - reduce session permission in order to lay only one role
+* Fixed
+  - controller refactoring
+  - model refactoring
+  - css
 
-* Added ...
-  * elasticsearch upgrade
-* Fixed ...
-  * minor changes
+## Version 1.13.0 (2023-02-24)
 
-## Version 1.11.0 (oct 11, 2022)
-* Various bugfixes
+Rilascio nuove funzionalità
+* Fixed
+  - minor fixes
 
-## Version 1.2.3 (Feb 11, 2022)
+## Version 1.12.0 (2023-01-27)
 
-* Added ...
-* Fixed ...
-* Integrated ...
-    * add system to remove user tokens when permissions change
-* Various bugfixes
-    * correct bug in jwtgrant.validate_jwt. jwt_decode method now require algorithms param
-* Removed
+Rilascio nuove funzionalità
+* Added
+  - elasticsearch upgrade
+* Fixed
+  - minor changes
 
-## Version 1.2.2 (Jun 21 , 2020)
+## Version 1.11.0 (2022-10-11)
 
-* Added ...
-* Fixed ...
-* Integrated ...
-* Various bugfixes
-    * correct bug in method validator.Oauth2RequestValidator.__set_user_perms
-    * correct some bug in Exception message
+Rilascio nuove funzionalità
+* Fixed
+  - Various bugfixes
 
-## Version 1.2.1 (Dec 23, 2019)
+## Version 1.2.3 (2022-02-11)
 
-* Added ...
-* Fixed ...
-* Integrated ...
-* Various bugfixes
-    * correct bug in controller exception that was not json serializable
+Rilascio nuove funzionalità
+* Fixed
+  - add system to remove user tokens when permissions change
+  - Various bugfixes
+  - correct bug in jwtgrant.validate_jwt. jwt_decode method now require algorithms param
 
-## Version 1.2.0 (Sep 04, 2019)
+## Version 1.2.2 (2020-06-21)
 
-* Added ...
-* Fixed ...
-* Integrated ...
-    * aggiornata documentazione classi
-* Various bugfixes
-    * correct bug in validator authenticate_client. If client does not exist now return error
+Rilascio nuove funzionalità
+* Fixed
+  - Various bugfixes
+  - correct bug in method validator.Oauth2RequestValidator.__set_user_perms
+  - correct some bug in Exception message
 
-## Version 1.1.0 (May 24, 2019)
+## Version 1.2.1 (2019-12-23)
 
-* Added ...
-* Fixed ...
-    * aggiornata la creazione del token per supportare le modifiche del provider auth ldap
-* Integrated ...
-* Various bugfixes
+Rilascio nuove funzionalità
+* Fixed
+  - Various bugfixes
+  - correct bug in controller exception that was not json serializable
 
-## Version 1.0.0 (July 31, 2018)
+## Version 1.2.0 (2019-09-04)
 
-First production preview release.
+Rilascio nuove funzionalità
+* Fixed
+  - aggiornata documentazione classi
+  - Various bugfixes
+  - correct bug in validator authenticate_client. If client does not exist now return error
 
-## Version 0.1.0 (April 18, 2016)
+## Version 1.1.0 (2019-05-24)
 
-First private preview release.
+Rilascio nuove funzionalità
+* Fixed
+  - aggiornata la creazione del token per supportare le modifiche del provider auth ldap
+  - Various bugfixes
+
+## Version 1.0.0 (2018-07-31)
+
+Rilascio nuove funzionalità
+
+## Version 0.1.0 (2016-04-18)
+
+Rilascio nuove funzionalità

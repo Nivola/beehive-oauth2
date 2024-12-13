@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2023 CSI-Piemonte
+# (C) Copyright 2018-2024 CSI-Piemonte
 from .systemuser import SystemUser
 from .oauth2object import Oauth2Object
 from .oauth2scope import Oauth2Scope

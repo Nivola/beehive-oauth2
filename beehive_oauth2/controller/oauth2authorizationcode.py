@@ -1,8 +1,15 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2023 CSI-Piemonte
+# (C) Copyright 2018-2024 CSI-Piemonte
 
 import ujson as json
+from copy import deepcopy
+from inspect import getfile
+from datetime import datetime
+from oauthlib.oauth2 import FatalClientError, OAuth2Error
+import logging
+from flask import request, session
+from flask.helpers import url_for
 from beecell.simple import (
     id_gen,
     truncate,
@@ -11,21 +18,13 @@ from beecell.simple import (
     token_gen,
     format_date,
 )
-import os
-from inspect import getfile
-from datetime import datetime
-from flask import request, session
-from beecell.flask.render import render_template
-from flask.helpers import url_for
-from copy import deepcopy
 from oauthlib.oauth2 import (
     WebApplicationServer,
     MobileApplicationServer,
     LegacyApplicationServer,
     BackendApplicationServer,
 )
-from oauthlib.oauth2 import FatalClientError, OAuth2Error
-import logging
+from beecell.flask.render import render_template
 from beehive.common.model.authorization import AuthDbManager
 
 

@@ -1,16 +1,21 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2023 CSI-Piemonte
+# (C) Copyright 2018-2024 CSI-Piemonte
 
-from flask import request
-from beecell.simple import get_remote_ip
+
 import ujson as json
-from flask import redirect
-from flask import Response
-from flask import session
+from typing import Dict
+from six.moves.urllib.parse import urlencode
+from marshmallow import fields, Schema
+from marshmallow.validate import OneOf
+from marshmallow.decorators import validates
+from marshmallow.exceptions import ValidationError
+from flask import request, redirect, Response, session
+from flask.helpers import url_for
+from beecell.flask.api_util import get_remote_ip
+from beecell.swagger import SwaggerHelper
 from beecell.flask.render import render_template
 from beecell.perf import watch
-from flask.helpers import url_for
 from beehive.common.apimanager import (
     ApiView,
     SwaggerApiView,
@@ -22,19 +27,12 @@ from beehive.common.apimanager import (
     ApiManagerError,
 )
 from beehive.common.data import operation
-from marshmallow import fields, Schema
-from marshmallow.validate import OneOf
-from marshmallow.decorators import validates
-from marshmallow.exceptions import ValidationError
-from beecell.swagger import SwaggerHelper
 from beehive.module.auth.views.auhtorization import (
     BaseCreateRequestSchema,
     BaseCreateExtendedParamRequestSchema,
     BaseUpdateRequestSchema,
 )
-from six.moves.urllib.parse import urlencode
 from beehive_oauth2.controller import Oauth2Controller
-from typing import Dict
 
 
 class Oauth2ApiView(SwaggerApiView):

@@ -1,6 +1,23 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2023 CSI-Piemonte
+# (C) Copyright 2018-2024 CSI-Piemonte
+
+
+import os
+from inspect import getfile
+from typing import Union
+from copy import deepcopy
+from oauthlib.oauth2 import (
+    WebApplicationServer,
+    MobileApplicationServer,
+    LegacyApplicationServer,
+    BackendApplicationServer,
+    FatalClientError,
+    OAuth2Error,
+)
+from flask import request
+from flask.helpers import url_for
+from flask_login import LoginManager
 
 from beecell.simple import (
     id_gen,
@@ -9,38 +26,24 @@ from beecell.simple import (
     random_password,
     token_gen,
 )
-import os
-from inspect import getfile
-from flask import request
+from beecell.db import TransactionError
 from beecell.flask.render import render_template
-from flask.helpers import url_for
-from copy import deepcopy
-from oauthlib.oauth2 import (
-    WebApplicationServer,
-    MobileApplicationServer,
-    LegacyApplicationServer,
-    BackendApplicationServer,
-)
-from oauthlib.oauth2 import FatalClientError, OAuth2Error
-from beehive.module.auth.controller import AuthController, User, Token, Role
-from beehive_oauth2.model import Oauth2DbManager, GrantType
-from beehive_oauth2.jwtgrant import JwtApplicationServer
+from beecell.crypto_util.rsa_crypto import RasCrypto
+
 from beehive.common.apimanager import ApiManagerError
 from beehive.common.data import operation, trace
-from beecell.db import TransactionError
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives import serialization
-import binascii
 from beehive.common.controller.authorization import BaseAuthController
+from beehive.module.auth.controller import AuthController, User
+from beehive.module.auth.controller import Token  # DO NOT REMOVE USED IMPLICTLY
+
 from beehive_oauth2.model import (
     Oauth2Client as ModelOauth2Client,
     Oauth2Scope as ModelOauth2Scope,
     Oauth2AuthorizationCode as ModelOauth2AuthorizationCode,
+    Oauth2DbManager,
+    GrantType,
 )
-import logging
-from flask_login import LoginManager
-from typing import Union
+from beehive_oauth2.jwtgrant import JwtApplicationServer
 
 from .oauth2client import Oauth2Client
 from .oauth2scope import Oauth2Scope
@@ -723,19 +726,10 @@ class Oauth2Controller(AuthController):
         try:
             if grant_type == GrantType.JWT_BEARER:
                 client_secret = None
-                private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048, backend=default_backend())
-                public_key = private_key.public_key()
-                pem = public_key.public_bytes(
-                    encoding=serialization.Encoding.PEM,
-                    format=serialization.PublicFormat.SubjectPublicKeyInfo,
-                )
-                pubkey = binascii.b2a_base64(pem)
-                pem = private_key.private_bytes(
-                    encoding=serialization.Encoding.PEM,
-                    format=serialization.PrivateFormat.PKCS8,
-                    encryption_algorithm=serialization.NoEncryption(),
-                )
-                seckey = binascii.b2a_base64(pem)
+                rsa_crypto = RasCrypto()
+                private_key = rsa_crypto.generate_private_key()
+                pubkey = rsa_crypto.get_public_key_pem(private_key)
+                seckey = rsa_crypto.get_private_key_pem(private_key)
             else:
                 client_secret = random_password(length=40)
                 pubkey = None

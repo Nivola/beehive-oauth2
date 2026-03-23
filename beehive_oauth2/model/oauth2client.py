@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 from datetime import datetime, timedelta
-from sqlalchemy import Column, Integer, String, Boolean, Table, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, Table, ForeignKey
 from sqlalchemy.orm import relationship, backref
 from beehive.common.model import BaseEntity
 
@@ -95,5 +95,5 @@ class Oauth2Client(Base, BaseEntity):
         self.scope = scope
 
         if expiry_date is None:
-            expiry_date = datetime.datetime.today() + datetime.timedelta(days=365)
+            expiry_date = datetime.today() + timedelta(days=365)
         self.expiry_date = expiry_date

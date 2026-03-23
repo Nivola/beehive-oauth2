@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 from beehive.common.apimanager import ApiManagerError
 from beecell.db import TransactionError
@@ -69,7 +69,7 @@ class Oauth2Client(Oauth2Object):
         :raise ApiManagerError:
         """
         if self.delete_object is None:
-            raise ApiManagerError("Delete is not supported for %s:%s" % (self.objtype, self.objdef))
+            raise ApiManagerError(f"Delete is not supported for {self.objtype}:{self.objdef}")
 
         # verify permissions
         self.verify_permisssions("delete")
@@ -86,17 +86,17 @@ class Oauth2Client(Oauth2Object):
                     # remove object and permissions
                     self.deregister_object(self.objid.split("//"))
 
-                user_name = "%s@local" % self.name
+                user_name = f"{self.name}@local"
                 if self.controller.exist_user(user_name) is True:
                     # delete client internal user
                     user = self.controller.get_user(user_name)
                     user.delete()
 
-                self.logger.debug("Delete %s: %s" % (self.objdef, self.oid))
+                self.logger.debug("Delete %s: %s", self.objdef, self.oid)
             else:
                 self.delete_object(self.model)
-                self.logger.debug("Soft delete %s: %s" % (self.objdef, self.oid))
+                self.logger.debug("Soft delete %s: %s", self.objdef, self.oid)
             return None
         except TransactionError as ex:
-            self.logger.error(ex.desc, exc_info=True)
+            self.logger.error(f"{ex}", exc_info=True)
             raise ApiManagerError(ex, code=ex.code)

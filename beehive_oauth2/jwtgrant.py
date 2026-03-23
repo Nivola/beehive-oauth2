@@ -1,25 +1,25 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
+
 
 from __future__ import absolute_import, unicode_literals
-import ujson as json
 import binascii
+from logging import getLogger
 from oauthlib.oauth2.rfc6749.clients.base import Client
 from oauthlib.oauth2.rfc6749.parameters import prepare_token_request
 from oauthlib.oauth2.rfc6749.endpoints.token import TokenEndpoint
 from oauthlib.oauth2.rfc6749.endpoints.resource import ResourceEndpoint
 from oauthlib.oauth2.rfc6749.endpoints.revocation import RevocationEndpoint
 from oauthlib.oauth2.rfc6749.tokens import BearerToken
-from beehive_oauth2.model import GrantType
 from oauthlib.oauth2.rfc6749.grant_types.base import GrantTypeBase
 from oauthlib.oauth2.rfc6749 import errors, parameters
-from logging import getLogger
 from oauthlib.oauth2.rfc6749.errors import OAuth2Error
 from jwt import decode as jwt_decode
-from beehive.common.apimanager import ApiManagerError
 from jwt.exceptions import MissingRequiredClaimError
 from beecell.simple import jsonDumps
+from beehive.common.apimanager import ApiManagerError
+from beehive_oauth2.model import GrantType
 
 log = getLogger(__name__)
 
@@ -170,18 +170,17 @@ class JwtGrant(GrantTypeBase):
             public_key = binascii.a2b_base64(client.public_key)
             # decoded = jwt_decode(assertion, public_key, algorithm='RS512', audience=audience)
             decoded = jwt_decode(assertion, public_key, algorithms=["RS512"], audience=audience)
-        except MissingRequiredClaimError as ex:
-            msg = "Token is missing the claim %s" % ex.claim
+        except MissingRequiredClaimError as exc:
+            msg = f"Token is missing the claim {exc.claim}"
             self.logger.error(msg)
-            raise InvalidJwtError(description=msg, request=request)
-        except Exception as ex:
-            self.logger.error(str(ex))
-            raise InvalidJwtError(description=str(ex), request=request)
+            raise InvalidJwtError(description=msg, request=request) from exc
+        except Exception as exc:
+            raise InvalidJwtError(description=str(exc), request=request) from exc
 
         # verify iss
         iss = client.user.name
         if decoded.get("iss", "") != iss:
-            msg = "Jwt iss does not match client %s user" % client.uuid
+            msg = f"Jwt iss does not match client {client.uuid} user"
             self.logger.error(msg)
             raise InvalidJwtError(description=msg, request=request)
 
@@ -195,11 +194,11 @@ class JwtGrant(GrantTypeBase):
         else:
             request.user = client.user.name
             request.secret = None
-            self.logger.debug("Jwt sub is not specified. Use client user %s" % client.user_id)
+            self.logger.debug("Jwt sub is not specified. Use client user %s", client.user_id)
 
         request.scopes = request.body.get("scope", "").split(",")
         # request.scopes = decoded.get('scope', '').split(',')
-        self.logger.info("Validate jwt %s" % decoded)
+        self.logger.debug("Validate jwt %s", decoded)
         return True
 
     def authenticate_user(self, request):
@@ -218,28 +217,28 @@ class JwtGrant(GrantTypeBase):
                 domain = name_domain[1]
             except:
                 domain = "local"
-        except:
-            raise InvalidUserError(description="User must be <user>@<domain>", request=request)
+        except Exception as exc:
+            raise InvalidUserError(description="User must be <user>@<domain>", request=request) from exc
 
         # validate input params
         try:
             self.controller.validate_login_params(name, domain, password, login_ip)
-        except ApiManagerError as ex:
-            raise InvalidUserError(ex.value, request=request)
+        except ApiManagerError as exc:
+            raise InvalidUserError(exc.value, request=request) from exc
 
         # check user
         try:
             dbuser, dbuser_attribs = self.controller.check_login_user(name, domain, password, login_ip)
-        except ApiManagerError as ex:
-            raise InvalidUserError(ex.value, request=request)
+        except ApiManagerError as exc:
+            raise InvalidUserError(exc.value, request=request) from exc
 
         # login user
         try:
             user, attrib = self.controller.check_base_login(name, domain, secret, login_ip, dbuser, dbuser_attribs)
             request.ormuser = user
             request.user_attribs = attrib
-        except ApiManagerError as ex:
-            raise InvalidUserError(ex.value, request=request)
+        except ApiManagerError as exc:
+            raise InvalidUserError(exc.value, request=request) from exc
 
         return True
 
@@ -257,17 +256,16 @@ class JwtGrant(GrantTypeBase):
 
             for param in ("grant_type", "scope"):
                 if param in request.duplicate_params:
-                    raise errors.InvalidRequestError(description="Duplicate %s parameter." % param, request=request)
+                    raise errors.InvalidRequestError(description=f"Duplicate {param} parameter.", request=request)
 
             log.debug("Authenticating client, %r.", request)
             if not self.request_validator.authenticate_client(request):
                 log.debug("Client authentication failed, %r.", request)
                 raise errors.InvalidClientError(request=request)
-            else:
-                if not hasattr(request.client, "client_id"):
-                    raise NotImplementedError(
-                        "Authenticate client must set the request.client.client_id attribute " "in authenticate_client."
-                    )
+            if not hasattr(request.client, "client_id"):
+                raise NotImplementedError(
+                    "Authenticate client must set the request.client.client_id attribute in authenticate_client."
+                )
 
             # validate jwt
             self.validate_jwt(request=request)

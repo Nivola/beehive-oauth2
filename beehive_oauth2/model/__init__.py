@@ -1,32 +1,20 @@
 # -*- coding: utf-8 -*-
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 import logging
 
-# import pandas as pd
-from datetime import datetime, timedelta
-from sqlalchemy import Column, Integer, String, Boolean, Table, ForeignKey, DateTime
-from sqlalchemy.orm import relationship, backref
+from datetime import datetime
 from sqlalchemy import create_engine, exc
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import func
-from sqlalchemy.sql import text
-from beecell.perf import watch
-from beecell.simple import truncate, id_gen
-from uuid import uuid4
+from beecell.simple import truncate
 from beecell.db import ModelError
-from beehive.common.data import query, transaction, operation
-from beehive.common.model import AbstractDbManager, BaseEntity
-from beehive.common.model.authorization import User, AuthDbManager
-
-# Base = declarative_base()
+from beehive.common.data import transaction
+from beehive.common.model.authorization import AuthDbManager
 
 from beehive.common.model.authorization import Base
-from beecell.auth.model import AbstractAuthDbManager
 from sqlalchemy.dialects import mysql
+from sqlalchemy import text
 
 from .oauth2authorizationcode import Oauth2AuthorizationCode
 from .oauth2client import Oauth2Client
@@ -62,9 +50,9 @@ class Oauth2DbManager(AuthDbManager):
         """Create all tables in the engine. This is equivalent to "Create Table" statements in raw SQL."""
         try:
             engine = create_engine(db_uri)
-            engine.execute("SET FOREIGN_KEY_CHECKS=1;")
+            engine.execute(text("SET FOREIGN_KEY_CHECKS=1;"))
             Base.metadata.create_all(engine)
-            logger.info("Create tables on : %s" % db_uri)
+            logger.debug("Create tables on : %s", db_uri)
             del engine
         except exc.DBAPIError as e:
             raise Exception(e)
@@ -74,9 +62,9 @@ class Oauth2DbManager(AuthDbManager):
         """Remove all tables in the engine. This is equivalent to "Drop Table" statements in raw SQL."""
         try:
             engine = create_engine(db_uri)
-            engine.execute("SET FOREIGN_KEY_CHECKS=0;")
+            engine.execute(text("SET FOREIGN_KEY_CHECKS=0;"))
             Base.metadata.drop_all(engine)
-            logger.info("Remove tables from : %s" % db_uri)
+            logger.debug("Remove tables from : %s", db_uri)
             del engine
         except exc.DBAPIError as e:
             raise Exception(e)
@@ -92,7 +80,7 @@ class Oauth2DbManager(AuthDbManager):
 
         :raise QueryError:
         """
-        return self.count_entites(Oauth2Scope)
+        return self.count_entities(Oauth2Scope)
 
     def get_scopes(self, *args, **kvargs):
         """Get scopes
@@ -158,7 +146,7 @@ class Oauth2DbManager(AuthDbManager):
         :return: count of Oauth2Client instances
         :raise QueryError:
         """
-        return self.count_entites(Oauth2Client)
+        return self.count_entities(Oauth2Client)
 
     def get_clients(self, *args, **kvargs):
         """Get clients
@@ -279,7 +267,7 @@ class Oauth2DbManager(AuthDbManager):
     #
     def count_authorization_codes(self):
         """Get authorization_codes count."""
-        return self.count_entites(Oauth2AuthorizationCode)
+        return self.count_entities(Oauth2AuthorizationCode)
 
     def get_authorization_codes(
         self,
@@ -323,11 +311,11 @@ class Oauth2DbManager(AuthDbManager):
         if valid is True:
             today = datetime.today()
             query = query.filter(Oauth2AuthorizationCode.expires_at > today)
-        self.logger.warn("stmp: %s" % query.statement.compile(dialect=mysql.dialect()))
+        self.logger.warn("stmp: %s", query.statement.compile(dialect=mysql.dialect()))
         res = query.limit(size).offset(page * size).all()
         total = query.count()
 
-        self.logger.debug("Get get_authorization_codes: %s" % truncate(res))
+        self.logger.debug("Get get_authorization_codes: %s", res)
         return res, total
 
     @transaction
@@ -345,7 +333,7 @@ class Oauth2DbManager(AuthDbManager):
 
         entity = query.first()
         if entity is None:
-            msg = "No %s found" % Oauth2AuthorizationCode.__name__
+            msg = f"No {Oauth2AuthorizationCode.__name__} found"
             self.logger.error(msg)
             raise ModelError(msg, code=404)
 
@@ -353,5 +341,5 @@ class Oauth2DbManager(AuthDbManager):
         for e in query.all():
             e.expires_at = datetime.today()
 
-        self.logger.debug("Expire %s %s" % (Oauth2AuthorizationCode.__name__, entity.id))
+        self.logger.debug("Expire %s %s" % Oauth2AuthorizationCode.__name__, entity.id)
         return None

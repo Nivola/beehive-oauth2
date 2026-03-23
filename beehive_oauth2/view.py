@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 
 import ujson as json
 from typing import Dict
-from six.moves.urllib.parse import urlencode
-from marshmallow import fields, Schema
+from urllib.parse import urlencode
+from flasgger import fields, Schema
 from marshmallow.validate import OneOf
 from marshmallow.decorators import validates
 from marshmallow.exceptions import ValidationError
@@ -15,7 +15,6 @@ from flask.helpers import url_for
 from beecell.flask.api_util import get_remote_ip
 from beecell.swagger import SwaggerHelper
 from beecell.flask.render import render_template
-from beecell.perf import watch
 from beehive.common.apimanager import (
     ApiView,
     SwaggerApiView,
@@ -80,10 +79,9 @@ class Oauth2ApiView(SwaggerApiView):
             authorization request. The exact value received from the client.
         """
         # params = urlencode({'error_description':error_description})
-        resp = redirect("%s" % (redirect_uri))
+        resp = redirect(f"{redirect_uri}")
         return resp
 
-    @watch
     def get_error(self, exception, code, error, module=None):
         """Return error
 
@@ -99,12 +97,12 @@ class Oauth2ApiView(SwaggerApiView):
 
         **Raise:** :class:`ApiManagerError`
         """
-        self.logger.error("Code: %s, Error: %s" % (code, exception), exc_info=True)
+        self.logger.error(f"Code: {code}, Error: {exception}", exc_info=True)
         if code == 420:
             # resp = self.authorize_error(error.in_uri(error.redirect_uri),
             #                            error.error, state,
             #                            error.description)
-            resp = redirect("%s" % (error.redirect_uri))
+            resp = redirect(f"{error.redirect_uri}")
         elif code == 421:
             resp = render_template("error.html", errors=error)
         else:
@@ -130,7 +128,7 @@ class Oauth2ApiView(SwaggerApiView):
         if user is None and format_json is False:
             # redirect to login page
             self.response_mime = "text/html"
-            resp = redirect("/%s/oauth2/login?code=authorization_code" % (controller.version))
+            resp = redirect(f"/{controller.version}/oauth2/login?code=authorization_code")
             return resp, resp.status_code
         if user is None and json is True:
             return self.get_error(ApiManagerError, 400, "User is not logged")
@@ -141,25 +139,30 @@ class Oauth2ApiView(SwaggerApiView):
 # authorization
 #
 class GetAuthorizationRequestSchema(Schema):
-    response_type = fields.String(required=True, example="code", context="query", description="must be code")
-    client_id = fields.String(required=True, example="37sys6hd", context="query", description="client id")
+    response_type = fields.String(
+        required=True,
+        metadata={"example": "code", "description": "must be code"},
+        context="query",
+    )
+    client_id = fields.String(
+        required=True,
+        metadata={"example": "37sys6hd", "description": "client id"},
+        context="query",
+    )
     redirect_uri = fields.String(
         required=True,
-        example="http://localhost/auth",
+        metadata={"example": "http://localhost/auth", "description": "redirection uri"},
         context="query",
-        description="redirection uri",
     )
     scope = fields.String(
         required=True,
-        example="auth",
+        metadata={"example": "auth", "description": "authorization scopes"},
         context="query",
-        description="authorization scopes",
     )
     state = fields.String(
         required=True,
-        example="12345",
+        metadata={"example": "12345", "description": "authorization state"},
         context="query",
-        description="authorization state",
     )
 
     @validates("response_type")
@@ -237,7 +240,7 @@ class GetAuthorization(Oauth2ApiView):
 
         # redirect to authorization scope page
         self.response_mime = "text/html"
-        resp = redirect("/%s/oauth2/authorize/scope?state=%s" % (controller.version, state))
+        resp = redirect(f"/{controller.version}/oauth2/authorize/scope?state={state}")
         return resp, resp.status_code
 
 
@@ -266,14 +269,18 @@ class GetAuthorizationScope(Oauth2ApiView):
                 msg=msg,
                 client=client_id,
                 scope=scope,
-                scope_uri="/%s/oauth2/authorize/scope" % controller.version,
+                scope_uri=f"/{controller.version}/oauth2/authorize/scope",
             ),
             200,
         )
 
 
 class SetAuthorizationScopeRequestSchema(Schema):
-    scope = fields.String(required=True, example="auth", context="query", description="scopes list")
+    scope = fields.String(
+        required=True,
+        metadata={"example": "auth", "description": "scopes list"},
+        context="query",
+    )
 
 
 class SetAuthorizationScope(Oauth2ApiView):
@@ -309,7 +316,7 @@ class SetAuthorizationScope(Oauth2ApiView):
             return self.get_error(ApiManagerError, 400, "Client scopes and user scopes does not match")
 
         # create authorization token
-        uri = "%s/oauth2/authorize" % controller.version
+        uri = f"{controller.version}/oauth2/authorize"
         headers = request.headers
         body = request.form.to_dict()
         self.logger.warn(body)
@@ -323,66 +330,90 @@ class SetAuthorizationScope(Oauth2ApiView):
 
 
 class CreateAccessTokenResponseSchema(Schema):
-    token_type = fields.String(required=True, example="Bearer", description="token type")
+    token_type = fields.String(
+        required=True,
+        metadata={"example": "Bearer", "description": "token type"},
+    )
     state = fields.String(
         required=True,
-        example="UF0P0TjqKykwL3sHoAXRaOeSJKSafH",
-        description="request state",
+        metadata={"example": "UF0P0TjqKykwL3sHoAXRaOeSJKSafH", "description": "request state"},
     )
     refresh_token = fields.String(
         required=True,
-        example="91KwQ7bLMoJA5lg5vQiYk91hllFJD8",
-        description="refresh token",
+        metadata={"example": "91KwQ7bLMoJA5lg5vQiYk91hllFJD8", "description": "refresh token"},
     )
     access_token = fields.String(
         required=True,
-        example="uX9HCdbP0hBbKiv1p5wajbeKYM0gmh",
-        description="access token",
+        metadata={"example": "uX9HCdbP0hBbKiv1p5wajbeKYM0gmh", "description": "access token"},
     )
-    scope = fields.List(fields.String(example="photos"), required=True, description="scopes list")
-    expires_in = fields.Integer(required=True, example=3600, description="expires in ..second")
-    expires_at = fields.Float(required=True, example=1471546820.270866, description="expires at")
+    scope = fields.List(
+        fields.String(metadata={"example": "photos"}),
+        required=True,
+        metadata={"description": "scopes list"},
+    )
+    expires_in = fields.Integer(
+        required=True,
+        metadata={"example": 3600, "description": "expires in ..second"},
+    )
+    expires_at = fields.Float(
+        required=True,
+        metadata={"example": 1471546820.270866, "description": "expires at"},
+    )
 
 
 class CreateAccessTokenErrorResponseSchema(Schema):
-    error = fields.Dict(required=False, example="", description="error")
+    error = fields.Dict(
+        required=False,
+        metadata={"example": "", "description": "error"},
+    )
 
 
 class CreateAccessTokenRequestSchema(Schema):
     code = fields.String(
         required=False,
-        example="bUCrCB2IMuIowKMt7fllpMh35H2aIY",
+        metadata={"example": "bUCrCB2IMuIowKMt7fllpMh35H2aIY", "description": "code"},
         context="query",
-        description="code",
     )
     client_secret = fields.String(
         required=False,
         context="query",
-        example="exh7ez922so3eeQjbsJLgiSR3fW3AVc1dsmQiBIi",
-        description="client secret",
+        metadata={"example": "exh7ez922so3eeQjbsJLgiSR3fW3AVc1dsmQiBIi", "description": "client secret"},
     )
     grant_type = fields.String(
         required=True,
-        example="authorization_code",
+        metadata={"example": "authorization_code", "description": "authorization code"},
         context="query",
-        description="authorization code",
     )
     client_id = fields.String(
         required=True,
-        example="8a994dd1-e96b-4092-8a14-ede3f77d8a2c",
+        metadata={"example": "8a994dd1-e96b-4092-8a14-ede3f77d8a2c", "description": "client id"},
         context="query",
-        description="client id",
     )
     redirect_uri = fields.String(
         required=False,
         context="query",
-        example="https://localhost:7443/authorize",
-        description="redirection uri",
+        metadata={"example": "https://localhost:7443/authorize", "description": "redirection uri"},
     )
-    username = fields.String(required=False, context="query", example="prova@local", description="username")
-    password = fields.String(required=False, context="query", example="xxxx", description="password")
-    assertion = fields.String(required=False, context="query", example="serfss", description="jwt assertion")
-    scope = fields.String(required=False, context="query", example="beehive", description="oauth2 scope")
+    username = fields.String(
+        required=False,
+        context="query",
+        metadata={"example": "prova@local", "description": "username"},
+    )
+    password = fields.String(
+        required=False,
+        context="query",
+        metadata={"example": "xxxx", "description": "password"},
+    )
+    assertion = fields.String(
+        required=False,
+        context="query",
+        metadata={"example": "serfss", "description": "jwt assertion"},
+    )
+    scope = fields.String(
+        required=False,
+        context="query",
+        metadata={"example": "beehive", "description": "oauth2 scope"},
+    )
 
 
 class CreateAccessToken(Oauth2ApiView):
@@ -422,26 +453,31 @@ class CreateAccessToken(Oauth2ApiView):
 # login, logout
 #
 class LoginRequestSchema(Schema):
-    username = fields.String(required=True, example="user", context="query", description="login user")
-    domain = fields.String(required=True, example="local", context="query", description="login domain")
+    username = fields.String(
+        required=True,
+        metadata={"example": "user", "description": "login user"},
+        context="query",
+    )
+    domain = fields.String(
+        required=True,
+        metadata={"example": "local", "description": "login domain"},
+        context="query",
+    )
     password = fields.String(
         required=True,
-        example="user@local",
+        metadata={"example": "user@local", "description": "login password"},
         context="query",
-        description="login password",
     )
     login_ip = fields.String(
         required=False,
-        example="user@local",
+        metadata={"example": "user@local", "description": "login ip address"},
         context="query",
-        description="login ip address",
     )
     code = fields.String(
         required=True,
-        example="authorization_code",
+        metadata={"example": "authorization_code", "description": "code"},
         allow_none=True,
         context="query",
-        description="code",
     )
 
 
@@ -488,12 +524,12 @@ class Login(SwaggerApiView):
             session.pop("msg", None)
             # get previous request body
             body = session["redirect_body"]
-            resp = redirect("/%s/oauth2/authorize?%s" % (controller.version, body))
+            resp = redirect(f"/{controller.version}/oauth2/authorize?{body}")
         elif res is True:
             session.pop("msg", None)
-            resp = redirect("/%s/oauth2/user" % controller.version)
+            resp = redirect(f"/{controller.version}/oauth2/user")
         else:
-            resp = redirect("/%s/oauth2/login" % controller.version)
+            resp = redirect(f"/{controller.version}/oauth2/login")
         return resp
 
 
@@ -510,7 +546,7 @@ class LoginPage(SwaggerApiView):
         msg = session.get("msg", None)
         redirect_uri = request.args.get("redirect-uri", None)
         code = request.args.get("code", None)
-        style = "css/style.%s.css" % request.args.get("style", "blue")
+        style = f"css/style.{request.args.get('style', 'blue')}.css"
         # get login page
         domains, redirect_uri = controller.login_page(redirect_uri)
 
@@ -522,10 +558,10 @@ class LoginPage(SwaggerApiView):
         # if user already logged redirect to other page
         if user is not None and code == "authorization_code":
             session.pop("msg", None)
-            resp = redirect("/%s/oauth2/authorize" % controller.version)
+            resp = redirect(f"/{controller.version}/oauth2/authorize")
         elif user is not None:
             session.pop("msg", None)
-            resp = redirect("/%s/oauth2/user" % controller.version)
+            resp = redirect(f"/{controller.version}/oauth2/user")
         # user not already logged
         else:
             resp = (
@@ -535,7 +571,7 @@ class LoginPage(SwaggerApiView):
                     domains=domains,
                     redirect_uri=redirect_uri,
                     code=code,
-                    login_uri="/%s/oauth2/login" % controller.version,
+                    login_uri=f"/{controller.version}/oauth2/login",
                     style=url_for("static", filename=style),
                 ),
                 200,
@@ -555,7 +591,7 @@ class Logout(SwaggerApiView):
         Logout user
         """
         user = controller.logout(session)
-        style = "css/style.%s.css" % request.args.get("style", "blue")
+        style = f"css/style.{request.args.get('style', 'blue')}.css"
         # set content type
         self.response_mime = "text/html"
         resp = (
@@ -580,18 +616,18 @@ class UserPage(SwaggerApiView):
         if user is None:
             # redirect to login page
             self.response_mime = "text/html"
-            resp = redirect("/%s/oauth2/login" % (controller.version))
+            resp = redirect(f"/{controller.version}/oauth2/login")
             return resp, resp.status_code
 
-        style = "css/style.%s.css" % request.args.get("style", "blue")
+        style = f"css/style.{request.args.get('style', 'blue')}.css"
         # set content type
         self.response_mime = "text/html"
         return (
             render_template(
                 "user.html",
-                logout_uri="/%s/oauth2/logout" % (controller.version),
+                logout_uri=f"/{controller.version}/oauth2/logout",
                 user=session["oauth2_user"],
-                login_uri="/%s/oauth2/user" % controller.version,
+                login_uri=f"/{controller.version}/oauth2/user",
                 style=url_for("static", filename=style),
             ),
             200,
@@ -603,22 +639,26 @@ class UserPage(SwaggerApiView):
 #
 class ListClientsRequestSchema(PaginatedRequestQuerySchema):
     expiry_date = fields.String(
-        default="2099-12-31",
-        example="2099-12-31",
+        load_default="2099-12-31",
+        metadata={"example": "2099-12-31", "description": "expiration date"},
         context="query",
-        description="expiration date",
     )
 
 
 class ListClientsParamsResponseSchema(ApiObjectResponseSchema):
     grant_type = fields.String(
-        example="authorization_code",
+        metadata={"example": "authorization_code", "description": "grant type"},
         required=True,
         context="query",
-        description="grant type",
     )
-    response_type = fields.String(example="code", required=True, description="response type")
-    scopes = fields.String(example="beehive", required=True, description="comma separated list of scopes")
+    response_type = fields.String(
+        metadata={"example": "code", "description": "response type"},
+        required=True,
+    )
+    scopes = fields.String(
+        metadata={"example": "beehive", "description": "comma separated list of scopes"},
+        required=True,
+    )
 
 
 class ListClientsResponseSchema(PaginatedResponseSchema):
@@ -646,30 +686,52 @@ class ListClients(SwaggerApiView):
 
 
 class ClientScopeResponseSchema(Schema):
-    name = fields.String(required=True, example="prova", description="scope name")
+    name = fields.String(
+        required=True,
+        metadata={"example": "prova", "description": "scope name"},
+    )
     uuid = fields.String(
         required=True,
-        default="4cdf0ea4-159a-45aa-96f2-708e461130e1",
-        example="4cdf0ea4-159a-45aa-96f2-708e461130e1",
-        description="scope uuid",
+        dump_default="4cdf0ea4-159a-45aa-96f2-708e461130e1",
+        metadata={"example": "4cdf0ea4-159a-45aa-96f2-708e461130e1", "description": "scope uuid"},
     )
 
 
 class GetClientParamsResponseSchema(ApiObjectResponseSchema):
-    grant_type = fields.String(example="authorization_code", description="grant type")
-    response_type = fields.String(example="code", description="response type")
-    client_secret = fields.String(
-        example="Vuh8tJlnhOA8taV2LSwYSgtP3IJpofWbBSjHmFM",
-        allow_none=True,
-        description="client secret",
+    grant_type = fields.String(
+        metadata={"example": "authorization_code", "description": "grant type"},
     )
-    client_email = fields.String(example="client1@local", description="client email")
-    redirect_uri = fields.String(example="https://localhost:7443/authorize", description="redirect uri")
-    private_key = fields.String(example="_hdue48sisiemcc...", allow_none=True, description="private key")
-    public_key = fields.String(example="e7SU-2ndw9cn9..", allow_none=True, description="public key")
-    scopes = fields.String(example="beehive", required=True, description="comma separated list of scopes")
-    auth_uri = fields.String(example="https://localhost/v1.0/authorize", description="auth uri")
-    token_uri = fields.String(example="https://localhost/v1.0/token", description="token uri")
+    response_type = fields.String(
+        metadata={"example": "code", "description": "response type"},
+    )
+    client_secret = fields.String(
+        metadata={"example": "Vuh8tJlnhOA8taV2LSwYSgtP3IJpofWbBSjHmFM", "description": "client secret"},
+        allow_none=True,
+    )
+    client_email = fields.String(
+        metadata={"example": "client1@local", "description": "client email"},
+    )
+    redirect_uri = fields.String(
+        metadata={"example": "https://localhost:7443/authorize", "description": "redirect uri"},
+    )
+    private_key = fields.String(
+        metadata={"example": "_hdue48sisiemcc...", "description": "private key"},
+        allow_none=True,
+    )
+    public_key = fields.String(
+        metadata={"example": "e7SU-2ndw9cn9..", "description": "public key"},
+        allow_none=True,
+    )
+    scopes = fields.String(
+        metadata={"example": "beehive", "description": "comma separated list of scopes"},
+        required=True,
+    )
+    auth_uri = fields.String(
+        metadata={"example": "https://localhost/v1.0/authorize", "description": "auth uri"},
+    )
+    token_uri = fields.String(
+        metadata={"example": "https://localhost/v1.0/token", "description": "token uri"},
+    )
 
 
 class GetClientResponseSchema(Schema):
@@ -695,17 +757,20 @@ class GetClient(SwaggerApiView):
 
 
 class CreateClientParamRequestSchema(BaseCreateRequestSchema, BaseCreateExtendedParamRequestSchema):
+    description = """\
+grant type. Select from: authorization_code, implicit, resource_owner_, password_credentials, \
+client_credentials, urn:ietf:params:oauth:grant-type:jwt-bearer\
+"""
     scopes = fields.String(
         required=True,
-        example="beehive,auth",
-        description="comma separated list of scopes",
+        metadata={"example": "beehive,auth", "description": "comma separated list of scopes"},
     )
     grant_type = fields.String(
         required=True,
-        example="authorization_code",
-        description="grant type. Select from: authorization_code, implicit, resource_owner_"
-        "password_credentials, client_credentials, "
-        "urn:ietf:params:oauth:grant-type:jwt-bearer",
+        metadata={
+            "example": "authorization_code",
+            "description": description,
+        },
         validate=OneOf(
             [
                 "authorization_code",
@@ -716,17 +781,21 @@ class CreateClientParamRequestSchema(BaseCreateRequestSchema, BaseCreateExtended
             ]
         ),
     )
-    redirect_uri = fields.String(required=True, example="beehive,auth", description="redirect uri")
+    redirect_uri = fields.String(
+        required=True,
+        metadata={"example": "beehive,auth", "description": "redirect uri"},
+    )
     response_type = fields.String(
         required=True,
-        example="code",
-        description="response type. Use code for grant-type=authorization_code",
+        metadata={"example": "code", "description": "response type. Use code for grant-type=authorization_code"},
     )
     user = fields.String(
         required=False,
-        example="admin@local",
-        description="id, uuid or name of the user to link to client. Use with Resource Owner "
-        "Password Credentials Grant",
+        metadata={
+            "example": "admin@local",
+            "description": "id, uuid or name of the user to link to client. Use with Resource Owner "
+                           "Password Credentials Grant",
+        },
     )
 
 
@@ -735,7 +804,10 @@ class CreateClientRequestSchema(Schema):
 
 
 class CreateClientBodyRequestSchema(Schema):
-    body = fields.Nested(CreateClientRequestSchema, context="body")
+    body = fields.Nested(
+        CreateClientRequestSchema,
+        context="body",
+    )
 
 
 class CreateClient(SwaggerApiView):
@@ -768,7 +840,10 @@ class UpdateClientRequestSchema(Schema):
 
 
 class UpdateClientBodyRequestSchema(GetApiObjectRequestSchema):
-    body = fields.Nested(UpdateClientRequestSchema, context="body")
+    body = fields.Nested(
+        UpdateClientRequestSchema,
+        context="body",
+    )
 
 
 class UpdateClient(SwaggerApiView):
@@ -812,10 +887,9 @@ class DeleteClient(SwaggerApiView):
 #
 class ListScopesRequestSchema(PaginatedRequestQuerySchema):
     expiry_date = fields.String(
-        default="2099-12-31",
-        example="2099-12-31",
+        load_default="2099-12-31",
+        metadata={"example": "2099-12-31", "description": "expiration date"},
         context="query",
-        description="expiration date",
     )
 
 
@@ -878,7 +952,10 @@ class CreateScopeRequestSchema(Schema):
 
 
 class CreateScopeBodyRequestSchema(Schema):
-    body = fields.Nested(CreateScopeRequestSchema, context="body")
+    body = fields.Nested(
+        CreateScopeRequestSchema,
+        context="body",
+    )
 
 
 class CreateScope(SwaggerApiView):
@@ -909,7 +986,10 @@ class UpdateScopeRequestSchema(Schema):
 
 
 class UpdateScopeBodyRequestSchema(GetApiObjectRequestSchema):
-    body = fields.Nested(UpdateScopeRequestSchema, context="body")
+    body = fields.Nested(
+        UpdateScopeRequestSchema,
+        context="body",
+    )
 
 
 class UpdateScope(SwaggerApiView):
@@ -952,38 +1032,71 @@ class DeleteScope(SwaggerApiView):
 # authorization_code
 #
 class ListAuthorizationCodesRequestSchema(PaginatedRequestQuerySchema):
-    expire = fields.String(required=False, example="2099-12-31", context="query", description="expire time")
+    expire = fields.String(
+        required=False,
+        metadata={"example": "2099-12-31", "description": "expire time"},
+        context="query",
+    )
     client = fields.String(
         required=False,
-        example=2,
+        metadata={"example": 2, "description": "client id, uuid or name"},
         context="query",
-        description="client id, uuid or name",
     )
     valid = fields.Boolean(
         required=False,
-        example=True,
+        metadata={"example": True, "description": "if True get only code not expired"},
         context="query",
-        description="if True get only code not expired",
     )
-    user = fields.String(required=False, example=2, context="query", description="user id, uuid or name")
+    user = fields.String(
+        required=False,
+        metadata={"example": 2, "description": "user id, uuid or name"},
+        context="query",
+    )
     valid = fields.Boolean(
         required=False,
-        example=False,
+        metadata={"example": False, "description": "if True list expired codes"},
         context="query",
-        description="if True list expired codes",
     )
 
 
 class AuthorizationCodeResponseSchema(Schema):
-    id = fields.Integer(required=True, example=2, description="code id")
-    client = fields.UUID(required=True, example=2, description="client uuid")
-    user = fields.UUID(required=True, example=2, description="user uuid")
-    scope = fields.List(fields.String(example="dje3d8whjdis"), required=True, description="scopes")
-    state = fields.String(required=True, example="dje3d8whjdis", description="generation state")
-    code = fields.String(required=True, example=2, description="code")
-    redirect_uri = fields.String(required=True, example=2, description="redirect uri")
-    expires_at = fields.String(required=True, example="2099-12-31", description="expiration date")
-    expired = fields.Boolean(required=True, example=True, description="tell if code is expired")
+    id = fields.Integer(
+        required=True,
+        metadata={"example": 2, "description": "code id"},
+    )
+    client = fields.UUID(
+        required=True,
+        metadata={"example": 2, "description": "client uuid"},
+    )
+    user = fields.UUID(
+        required=True,
+        metadata={"example": 2, "description": "user uuid"},
+    )
+    scope = fields.List(
+        fields.String(metadata={"example": "dje3d8whjdis"}),
+        required=True,
+        metadata={"description": "scopes"},
+    )
+    state = fields.String(
+        required=True,
+        metadata={"example": "dje3d8whjdis", "description": "generation state"},
+    )
+    code = fields.String(
+        required=True,
+        metadata={"example": 2, "description": "code"},
+    )
+    redirect_uri = fields.String(
+        required=True,
+        metadata={"example": 2, "description": "redirect uri"},
+    )
+    expires_at = fields.String(
+        required=True,
+        metadata={"example": "2099-12-31", "description": "expiration date"},
+    )
+    expired = fields.Boolean(
+        required=True,
+        metadata={"example": True, "description": "tell if code is expired"},
+    )
 
 
 class ListAuthorizationCodesResponseSchema(PaginatedResponseSchema):
@@ -1035,68 +1148,68 @@ class DeleteAuthorizationCode(SwaggerApiView):
 #
 # user_session
 #
-class ListUserSessionsRequestSchema(Schema):
-    pass
+# class ListUserSessionsRequestSchema(Schema):
+#     pass
 
 
-class ListUserSessionsResponseSchema(Schema):
-    user_sessions = fields.List(fields.Dict(example={}), required=True, description="List of user sessions")
-    count = fields.Integer(required=True, example=1, description="User sessions count")
+# class ListUserSessionsResponseSchema(Schema):
+#     user_sessions = fields.List(fields.Dict(example={}), required=True, description="List of user sessions")
+#     count = fields.Integer(required=True, example=1, description="User sessions count")
 
 
-class ListUserSessions(SwaggerApiView):
-    tags = ["oauth2"]
-    definitions = {
-        "ListUserSessionsResponseSchema": ListUserSessionsResponseSchema,
-    }
-    parameters = SwaggerHelper().get_parameters(ListUserSessionsRequestSchema)
-    parameters_schema = ListUserSessionsRequestSchema
-    responses = SwaggerApiView.setResponses({200: {"description": "success", "schema": ListUserSessionsResponseSchema}})
+# class ListUserSessions(SwaggerApiView):
+#     tags = ["oauth2"]
+#     definitions = {
+#         "ListUserSessionsResponseSchema": ListUserSessionsResponseSchema,
+#     }
+#     parameters = SwaggerHelper().get_parameters(ListUserSessionsRequestSchema)
+#     parameters_schema = ListUserSessionsRequestSchema
+#     responses = SwaggerApiView.setResponses({200: {"description": "success", "schema": ListUserSessionsResponseSchema}})
 
-    def get(self, controller: Oauth2Controller, data: Dict, *args, **kwargs):
-        """
-        List user_sessions
-        Call this api to list user_sessions
-        """
-        user_sessions = controller.get_user_sessions()
-        return {"user_sessions": user_sessions, "count": len(user_sessions)}
-
-
-class GetUserSessionResponseSchema(Schema):
-    user_session = fields.Dict(example={}, required=True, description="User sessions")
+#     def get(self, controller: Oauth2Controller, data: Dict, *args, **kwargs):
+#         """
+#         List user_sessions
+#         Call this api to list user_sessions
+#         """
+#         user_sessions = controller.get_user_sessions()
+#         return {"user_sessions": user_sessions, "count": len(user_sessions)}
 
 
-class GetUserSession(SwaggerApiView):
-    tags = ["oauth2"]
-    definitions = {
-        "GetUserSessionResponseSchema": GetUserSessionResponseSchema,
-    }
-    parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
-    responses = SwaggerApiView.setResponses({200: {"description": "success", "schema": GetUserSessionResponseSchema}})
-
-    def get(self, controller: Oauth2Controller, data: Dict, oid, *args, **kwargs):
-        """
-        Get user_session
-        Call this api to get user_session by id, uuid or name
-        """
-        user_session = controller.get_user_sessions(sid=oid)[0]
-        resp = {"user_session": user_session}
-        return resp
+# class GetUserSessionResponseSchema(Schema):
+#     user_session = fields.Dict(example={}, required=True, description="User sessions")
 
 
-class DeleteUserSession(SwaggerApiView):
-    tags = ["oauth2"]
-    definitions = {}
-    parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
-    responses = SwaggerApiView.setResponses({204: {"description": "no response"}})
+# class GetUserSession(SwaggerApiView):
+#     tags = ["oauth2"]
+#     definitions = {
+#         "GetUserSessionResponseSchema": GetUserSessionResponseSchema,
+#     }
+#     parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
+#     responses = SwaggerApiView.setResponses({200: {"description": "success", "schema": GetUserSessionResponseSchema}})
 
-    def delete(self, controller: Oauth2Controller, data: Dict, oid, *args, **kwargs):
-        """
-        Delete user_session
-        Call this api to delete a user_session
-        """
-        controller.delete_user_session(oid)
-        return (None, 204)
+#     def get(self, controller: Oauth2Controller, data: Dict, oid, *args, **kwargs):
+#         """
+#         Get user_session
+#         Call this api to get user_session by id, uuid or name
+#         """
+#         user_session = controller.get_user_sessions(sid=oid)[0]
+#         resp = {"user_session": user_session}
+#         return resp
+
+
+# class DeleteUserSession(SwaggerApiView):
+#     tags = ["oauth2"]
+#     definitions = {}
+#     parameters = SwaggerHelper().get_parameters(GetApiObjectRequestSchema)
+#     responses = SwaggerApiView.setResponses({204: {"description": "no response"}})
+
+#     def delete(self, controller: Oauth2Controller, data: Dict, oid, *args, **kwargs):
+#         """
+#         Delete user_session
+#         Call this api to delete a user_session
+#         """
+#         controller.delete_user_session(oid)
+#         return (None, 204)
 
 
 class Oauth2Api(ApiView):
@@ -1106,102 +1219,102 @@ class Oauth2Api(ApiView):
     def register_api(module, **kwargs):
         base = "oauth2"
         old_rules = [
-            ("%s/login" % base, "POST", Login, {"secure": False}),
-            ("%s/login" % base, "GET", LoginPage, {"secure": False}),
-            ("%s/logout" % base, "GET", Logout, {"secure": False}),
-            ("%s/user" % base, "GET", UserPage, {"secure": False}),
+            (f"{base}/login", "POST", Login, {"secure": False}),
+            (f"{base}/login", "GET", LoginPage, {"secure": False}),
+            (f"{base}/logout", "GET", Logout, {"secure": False}),
+            (f"{base}/user", "GET", UserPage, {"secure": False}),
             # required oauth2 routes
-            ("%s/authorize" % base, "GET", GetAuthorization, {"secure": False}),
+            (f"{base}/authorize", "GET", GetAuthorization, {"secure": False}),
             # ('%s/authorize' % base, 'POST', CreateAuthorization, {'secure': False}),
             (
-                "%s/authorize/scope" % base,
+                f"{base}/authorize/scope",
                 "GET",
                 GetAuthorizationScope,
                 {"secure": False},
             ),
             (
-                "%s/authorize/scope" % base,
+                f"{base}/authorize/scope",
                 "POST",
                 SetAuthorizationScope,
                 {"secure": False},
             ),
-            ("%s/token" % base, "POST", CreateAccessToken, {"secure": False}),
+            (f"{base}/token", "POST", CreateAccessToken, {"secure": False}),
             # additional routes
             # ('%s/tokens' % base, 'GET', ListTokens, {}),
             # ('%s/tokens/<oid>' % base, 'DELETE', DeleteToken, {}),
             # ('%s/authorization-codes' % base, 'GET', ListAuthorizationCodes, {}),
             # ('%s/authorization-codes/<oid>' % base, 'DELETE', DeleteAuthorizationCode, {}),
-            ("%s/clients" % base, "GET", ListClients, {}),
-            ("%s/clients/<oid>" % base, "GET", GetClient, {}),
-            ("%s/clients" % base, "POST", CreateClient, {}),
-            ("%s/clients/<oid>" % base, "PUT", UpdateClient, {}),
-            ("%s/clients/<oid>" % base, "DELETE", DeleteClient, {}),
-            ("%s/scopes" % base, "GET", ListScopes, {}),
-            ("%s/scopes/<oid>" % base, "GET", GetScope, {}),
-            ("%s/scopes" % base, "POST", CreateScope, {}),
-            ("%s/scopes/<oid>" % base, "PUT", UpdateScope, {}),
-            ("%s/scopes/<oid>" % base, "DELETE", DeleteScope, {}),
-            ("%s/authorization_codes" % base, "GET", ListAuthorizationCodes, {}),
+            (f"{base}/clients", "GET", ListClients, {}),
+            (f"{base}/clients/<oid>", "GET", GetClient, {}),
+            (f"{base}/clients", "POST", CreateClient, {}),
+            (f"{base}/clients/<oid>", "PUT", UpdateClient, {}),
+            (f"{base}/clients/<oid>", "DELETE", DeleteClient, {}),
+            (f"{base}/scopes", "GET", ListScopes, {}),
+            (f"{base}/scopes/<oid>", "GET", GetScope, {}),
+            (f"{base}/scopes", "POST", CreateScope, {}),
+            (f"{base}/scopes/<oid>", "PUT", UpdateScope, {}),
+            (f"{base}/scopes/<oid>", "DELETE", DeleteScope, {}),
+            (f"{base}/authorization_codes", "GET", ListAuthorizationCodes, {}),
             # ('%s/authorization_codes/<oid>' % base, 'GET', GetAuthorizationCode, {}),
             (
-                "%s/authorization_codes/<oid>" % base,
+                f"{base}/authorization_codes/<oid>",
                 "DELETE",
                 DeleteAuthorizationCode,
                 {},
             ),
-            ("%s/user_sessions" % base, "GET", ListUserSessions, {}),
-            ("%s/user_sessions/<oid>" % base, "GET", GetUserSession, {}),
-            ("%s/user_sessions/<oid>" % base, "DELETE", DeleteUserSession, {}),
+            #("%s/user_sessions" % base, "GET", ListUserSessions, {}),
+            #("%s/user_sessions/<oid>" % base, "GET", GetUserSession, {}),
+            #("%s/user_sessions/<oid>" % base, "DELETE", DeleteUserSession, {}),
         ]
 
         base = "nas/oauth2"
         rules = [
-            ("%s/login" % base, "POST", Login, {"secure": False}),
-            ("%s/login" % base, "GET", LoginPage, {"secure": False}),
-            ("%s/logout" % base, "GET", Logout, {"secure": False}),
-            ("%s/user" % base, "GET", UserPage, {"secure": False}),
+            (f"{base}/login", "POST", Login, {"secure": False}),
+            (f"{base}/login", "GET", LoginPage, {"secure": False}),
+            (f"{base}/logout", "GET", Logout, {"secure": False}),
+            (f"{base}/user", "GET", UserPage, {"secure": False}),
             # required oauth2 routes
-            ("%s/authorize" % base, "GET", GetAuthorization, {"secure": False}),
+            (f"{base}/authorize", "GET", GetAuthorization, {"secure": False}),
             # ('%s/authorize' % base, 'POST', CreateAuthorization, {'secure': False}),
             (
-                "%s/authorize/scope" % base,
+                f"{base}/authorize/scope",
                 "GET",
                 GetAuthorizationScope,
                 {"secure": False},
             ),
             (
-                "%s/authorize/scope" % base,
+                f"{base}/authorize/scope",
                 "POST",
                 SetAuthorizationScope,
                 {"secure": False},
             ),
-            ("%s/token" % base, "POST", CreateAccessToken, {"secure": False}),
+            (f"{base}/token", "POST", CreateAccessToken, {"secure": False}),
             # additional routes
             # ('%s/tokens' % base, 'GET', ListTokens, {}),
             # ('%s/tokens/<oid>' % base, 'DELETE', DeleteToken, {}),
             # ('%s/authorization-codes' % base, 'GET', ListAuthorizationCodes, {}),
             # ('%s/authorization-codes/<oid>' % base, 'DELETE', DeleteAuthorizationCode, {}),
-            ("%s/clients" % base, "GET", ListClients, {}),
-            ("%s/clients/<oid>" % base, "GET", GetClient, {}),
-            ("%s/clients" % base, "POST", CreateClient, {}),
-            ("%s/clients/<oid>" % base, "PUT", UpdateClient, {}),
-            ("%s/clients/<oid>" % base, "DELETE", DeleteClient, {}),
-            ("%s/scopes" % base, "GET", ListScopes, {}),
-            ("%s/scopes/<oid>" % base, "GET", GetScope, {}),
-            ("%s/scopes" % base, "POST", CreateScope, {}),
-            ("%s/scopes/<oid>" % base, "PUT", UpdateScope, {}),
-            ("%s/scopes/<oid>" % base, "DELETE", DeleteScope, {}),
-            ("%s/authorization_codes" % base, "GET", ListAuthorizationCodes, {}),
+            (f"{base}/clients", "GET", ListClients, {}),
+            (f"{base}/clients/<oid>", "GET", GetClient, {}),
+            (f"{base}/clients", "POST", CreateClient, {}),
+            (f"{base}/clients/<oid>", "PUT", UpdateClient, {}),
+            (f"{base}/clients/<oid>", "DELETE", DeleteClient, {}),
+            (f"{base}/scopes", "GET", ListScopes, {}),
+            (f"{base}/scopes/<oid>", "GET", GetScope, {}),
+            (f"{base}/scopes", "POST", CreateScope, {}),
+            (f"{base}/scopes/<oid>", "PUT", UpdateScope, {}),
+            (f"{base}/scopes/<oid>", "DELETE", DeleteScope, {}),
+            (f"{base}/authorization_codes", "GET", ListAuthorizationCodes, {}),
             # ('%s/authorization_codes/<oid>' % base, 'GET', GetAuthorizationCode, {}),
             (
-                "%s/authorization_codes/<oid>" % base,
+                f"{base}/authorization_codes/<oid>",
                 "DELETE",
                 DeleteAuthorizationCode,
                 {},
             ),
-            ("%s/user_sessions" % base, "GET", ListUserSessions, {}),
-            ("%s/user_sessions/<oid>" % base, "GET", GetUserSession, {}),
-            ("%s/user_sessions/<oid>" % base, "DELETE", DeleteUserSession, {}),
+            #("%s/user_sessions" % base, "GET", ListUserSessions, {}),
+            #("%s/user_sessions/<oid>" % base, "GET", GetUserSession, {}),
+            #("%s/user_sessions/<oid>" % base, "DELETE", DeleteUserSession, {}),
         ]
         rules.extend(old_rules)
 

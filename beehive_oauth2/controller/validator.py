@@ -1,13 +1,12 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 # -*- coding: utf-8 -*-
 import ujson as json
-from six import ensure_text
 from oauthlib.oauth2 import RequestValidator
 from logging import getLogger
-from six import ensure_text
+from beecell.util import ensure_text
 from beecell.simple import truncate
 from datetime import datetime, timedelta
 from beecell.db import ModelError
@@ -131,11 +130,11 @@ class Oauth2RequestValidator(RequestValidator):
 
             # get grant type
             grant_type = request.body["grant_type"]
-
+            client = None
             if grant_type == GrantType.AUTHORIZATION_CODE:
                 client_secret = request.body["client_secret"]
                 if orm_client.client_secret != client_secret:
-                    raise ModelError("Client %s authentication failed" % client_id)
+                    raise ModelError(f"Client {client_id} authentication failed")
 
                 client = WebApplicationClient(client_id=client_id)
 
@@ -148,22 +147,22 @@ class Oauth2RequestValidator(RequestValidator):
             elif grant_type == GrantType.CLIENT_CRDENTIAL:
                 client_secret = request.body["client_secret"]
                 if orm_client.client_secret != client_secret:
-                    raise ModelError("Client %s authentication failed" % client_id)
+                    raise ModelError(f"Client {client_id} authentication failed")
                 client = BackendApplicationClient(client_id=client_id)
 
             elif grant_type == GrantType.JWT_BEARER:
                 if orm_client is None:
-                    raise ModelError("Client %s does not exists" % client_id)
+                    raise ModelError(f"Client {client_id} does not exists")
                 client = JWTClient(client_id=client_id)
 
             request.client = client
-            self.logger.info("Authenticate client %s" % client_id)
+            self.logger.info("Authenticate client %s", client_id)
             return True
         except ModelError as ex:
             self.logger.error(ex, exc_info=1)
             return False
         except Exception as ex:
-            self.logger.error(ex.message, exc_info=1)
+            self.logger.error(str(ex), exc_info=1)
             return False
 
     def authenticate_client_id(self, client_id, request, *args, **kwargs):
@@ -217,9 +216,9 @@ class Oauth2RequestValidator(RequestValidator):
                 .first()
             )
             if auth_code is None:
-                raise ModelError("Client %s redirect uri does not match" % client_id)
+                raise ModelError(f"Client {client_id} redirect uri does not match")
 
-            self.logger.info("Client %s redirect uri matches" % client_id)
+            self.logger.info("Client %s redirect uri matches", client_id)
             return True
         except ModelError as ex:
             self.logger.error(ex)
@@ -259,10 +258,10 @@ class Oauth2RequestValidator(RequestValidator):
             for scope in client.scope:
                 scopes.append(scope.name)
 
-            self.logger.info("Get client %s default scopes: %s" % (client_id, scopes))
+            self.logger.info("Get client %s default scopes: %s", client_id, scopes)
             return scopes
         except Exception as ex:
-            self.logger.error(ex.message, exc_info=1)
+            self.logger.error(str(ex), exc_info=1)
 
     def get_original_scopes(self, refresh_token, request, *args, **kwargs):
         """Get the list of scopes associated with the refresh token.
@@ -317,7 +316,7 @@ class Oauth2RequestValidator(RequestValidator):
             expires_at = datetime.today() - timedelta(minutes=1)
             auth_code.update({"expires_at": expires_at}, synchronize_session="fetch")
 
-            self.logger.info("Invalidate %s authorization code %s" % (client_id, code))
+            self.logger.warning("Invalidate %s authorization code %s", client_id, code)
             return True
         except ModelError as ex:
             self.logger.error(ex)
@@ -396,7 +395,7 @@ class Oauth2RequestValidator(RequestValidator):
             item = session.query(Oauth2Scope).filter_by(name=scope).first()
             data.scope.append(item)
 
-        self.logger.info("Add authorization code: %s" % data)
+        self.logger.debug("Add authorization code: %s", data)
 
     @transaction
     def save_bearer_token(self, token, request: Request, *args, **kwargs):
@@ -503,7 +502,7 @@ class Oauth2RequestValidator(RequestValidator):
                 "ip": login_ip,
                 "scope": request.scope,
             }
-            self.logger.debug("Create identity: %s" % (truncate(identity)))
+            self.logger.debug("Create identity: %s", identity)
 
             # set user in thread local variable
             operation.user = (user_id, login_ip, uid)
@@ -511,7 +510,7 @@ class Oauth2RequestValidator(RequestValidator):
             # save identity in redis
             self.controller.set_identity(uid, identity, expire=True, expire_time=token["expires_in"])
 
-            self.logger.info("Add bearer token: %s" % token)
+            self.logger.debug("Add bearer token: %s", token)
             return client.redirect_uri
         except ModelError as ex:
             self.logger.error(ex)
@@ -590,11 +589,11 @@ class Oauth2RequestValidator(RequestValidator):
             client: Oauth2Client = session.query(Oauth2Client).filter_by(uuid=client_id).filter_by(active=True).first()
 
             if client is None:
-                raise ModelError("Client %s is not valid" % client_id)
+                raise ModelError(f"Client {client_id} is not valid")
 
             request.ormclient = client
 
-            self.logger.info("Validate client %s" % client_id)
+            self.logger.warning("Validate client %s", client_id)
             return True
         except ModelError as ex:
             self.logger.error(ex)
@@ -635,7 +634,7 @@ class Oauth2RequestValidator(RequestValidator):
                 .first()
             )
             if auth_code.expires_at < datetime.today():
-                raise ModelError("Authorization token %s expired" % code)
+                raise ModelError(f"Authorization token {code} expired")
 
             # set request
             request.user = auth_code.user_id
@@ -647,7 +646,7 @@ class Oauth2RequestValidator(RequestValidator):
 
             request.scopes = scopes
 
-            self.logger.info("Validate %s authorization code %s" % (client_id, code))
+            self.logger.debug("Validate %s authorization code %s", client_id, code)
             return True
         except ModelError as ex:
             self.logger.error(ex)
@@ -672,8 +671,8 @@ class Oauth2RequestValidator(RequestValidator):
 
         oauth_client: Oauth2Client = request.ormclient
         if oauth_client.grant_type != grant_type:
-            raise ModelError("Client %s is not authorized to use the grant type %s" % (client_id, grant_type))
-        self.logger.info("Validate client %s with grant type %s" % (client_id, grant_type))
+            raise ModelError(f"Client {client_id} is not authorized to use the grant type {grant_type}")
+        self.logger.debug("Validate client %s with grant type %s", client_id, grant_type)
         return True
 
     @query
@@ -698,7 +697,7 @@ class Oauth2RequestValidator(RequestValidator):
             client = session.query(Oauth2Client).filter_by(uuid=client_id).first()
             if client.redirect_uri != redirect_uri:
                 raise ModelError("Redirection uri does not match")
-            self.logger.info("Validate client %s redirection uri %s" % (client_id, redirect_uri))
+            self.logger.debug("Validate client %s redirection uri %s", client_id, redirect_uri)
             return True
         except ModelError as ex:
             self.logger.error(ex)
@@ -743,7 +742,7 @@ class Oauth2RequestValidator(RequestValidator):
             oauth_client = session.query(Oauth2Client).filter_by(uuid=client_id).first()
             if oauth_client.response_type != response_type:
                 raise ModelError("Response type does not match")
-            self.logger.info("Validate client %s response type %s" % (client_id, response_type))
+            self.logger.debug("Validate client %s response type %s", client_id, response_type)
             return True
         except ModelError as ex:
             self.logger.error(ex)
@@ -771,7 +770,7 @@ class Oauth2RequestValidator(RequestValidator):
             client_scope = [ensure_text(c.name) for c in oauth_client.scope]
 
             if set(scopes).issubset(set(client_scope)):
-                self.logger.info("Validate client %s scopes %s" % (client_id, scopes))
+                self.logger.debug("Validate client %s scopes %s", client_id, scopes)
                 return True
 
             raise ModelError("Scopes does not match")
@@ -803,7 +802,7 @@ class Oauth2RequestValidator(RequestValidator):
             request.pwd = password
             # request.login_ip
             res = self.authenticate_user(request)
-            self.logger.info("Validate user %s: %s" % (username, res))
+            self.logger.debug("Validate user %s: %s", username, res)
             return res
         except ApiManagerError:
             return False

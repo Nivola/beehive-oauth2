@@ -1,4 +1,62 @@
 changelog:
+  - version: 1.18.2
+    date: 2026-03-12
+    added: []
+    fixed:
+      - Solve some warning
+      - Reduce some log verbosity and apply lazy formatting
+      - Update requirements
+  - version: 1.18.1
+    date: 2026-02-12
+    added: []
+    fixed: []
+
+
+  - version: 1.18.0
+    date: 2026-01-22
+    added: []
+    fixed: 
+        - updated python version, labraries and dependencies     
+        - schema definitions
+    removed:
+        - unused files
+        - six direct usage
+
+
+  - version: 1.17.13
+    date: 2025-12-11
+    added: []
+    fixed: []
+
+  - version: 1.17.12
+    date: 2025-11-27
+    added: []
+    fixed: []
+  
+  - version: 1.17.11
+    date: 2025-11-06
+    added: []
+    fixed: []
+
+  - version: 1.17.7
+    date: 2025-08-05
+    added:
+      - SecurityGroup rule apply to NSX security group not to NSX distribuited firewall
+
+  - version: 1.17.3
+    date: 2025-03-28
+
+  - version: 1.17.2
+    date: 2025-03-12
+
+  - version: 1.17.1
+    date: 2025-03-06
+
+  - version: 1.17.0
+    date: 2025-02-24
+    desc: rilascio funzionalità
+    added:
+      - now using new crypto utils
   - version: 1.16.0
     date: 2024-03-26
     descr:
@@ -18,7 +76,7 @@ changelog:
     fixed:
       - minor changes
   - version: 1.14.0
-    date:  2023-06-22
+    date: 2023-06-22
     descr:
     added:
       - reduce session permission in order to lay only one role

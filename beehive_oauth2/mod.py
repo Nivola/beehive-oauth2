@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 from beehive.common.apimanager import ApiModule
+from beehive.common.controller.authorization import AuthenticationManager
 from beehive_oauth2.view import Oauth2Api
 from beehive_oauth2.controller import Oauth2Controller
-from beehive.common.controller.authorization import AuthenticationManager
 
 
 class Oauth2Module(ApiModule):

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
 import ujson as json
 from copy import deepcopy
@@ -54,7 +54,7 @@ class Oauth2AuthorizationCode(Oauth2Object):
         self.objid = "*"
 
         # object uri
-        self.objuri = "/%s/%s/%s" % (self.controller.version, self.objuri, self.oid)
+        self.objuri = f"/{self.controller.version}/{self.objuri}/{self.oid}"
 
         self.child_classes = []
         self.auth_db_manager = AuthDbManager()

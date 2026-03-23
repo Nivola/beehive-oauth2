@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 # SPDX-License-Identifier: EUPL-1.2
 #
-# (C) Copyright 2018-2024 CSI-Piemonte
+# (C) Copyright 2018-2026 CSI-Piemonte
 
-from sys import version_info
 from setuptools import setup
 from setuptools.command.install import install as _install
 
@@ -30,9 +29,9 @@ def load_requires():
 
 
 def load_version():
-    with open("./beehive_oauth2/VERSION") as f:
-        version = f.read()
-    return version
+    with open("./beehive_oauth2/VERSION", encoding='utf-8') as f:
+        r_version = f.read()
+    return r_version
 
 
 if __name__ == "__main__":
@@ -73,7 +72,7 @@ if __name__ == "__main__":
             "beehive_oauth2.view",
         ],
         classifiers=[
-            "Development Status :: %s" % version,
+            f"Development Status :: {version}",
             "Programming Language :: Python",
         ],
         entry_points={},
